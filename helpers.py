@@ -1,41 +1,84 @@
-from tree import Tree
-from tree import Node
 import numpy as np
+from treelib import Node, Tree
 
-def get_new_state(current_state, next_char):
-    """Generates a new state from the given state or returns false if not possible. No eval or heuristics yet.
 
-    :param current_state: instance of State class
-    :param next_char: indicates if next move is an 'x' or an 'o'
-    :return: new state or false if no new states possible
+class State:
     """
-    dimensions = current_state.shape
-    found_new_state = False
-    for row in range(dimensions[0]):
-        for column in range(dimensions[1]):
-            if current_state[row, column] == '-':
-                new_state = np.copy(current_state)
-                new_state[row, column] = next_char
-                found_new_state = True
-                break
-        if found_new_state:
-            break
+    Attributes
+    ------------
+    positions : 2D NumPy array showing status of each board position
+    n_pos_open : number of squares open
+    """
 
-    if found_new_state:
-        return new_state
+    def __init__(self, prev_state, loc, marker):
+        if prev_state is None:
+            self.positions = np.array([['-', '-', '-'],
+                                       ['-', '-', '-'],
+                                       ['-', '-', '-']])
+            self.n_pos_open = self.positions.shape[0] * self.positions.shape[1]
+        else:
+            self.positions = np.copy(prev_state.positions)
+            self.positions[loc[0], loc[1]] = marker
+            self.n_pos_open = prev_state.n_pos_open - 1
+
+
+def gen_states(start_state, mark):
+    """Generates all next possible moves from a given state.
+    :param start_state: current state of the game
+    :param mark: 'x' or 'o', mark to be placed on board while generating new states
+    :return: list of possible next states or None if no new states are possible
+    """
+
+    if start_state.n_pos_open == 0:
+        return None
+    possible_states = []
+
+    for row in range(3):
+        for col in range(3):
+            if start_state.positions[row, col] == '-':
+                possible_states.append(State(start_state, (row, col), mark))
+
+    return possible_states
+
+
+def generate_tree(game_tree, parent_node, mark, max_depth):
+    """Generates the game tree based on the starting state and the next player
+
+    :param game_tree: tree being built, assumed not to be empty
+    :param parent_node: node containing state to branch from
+    :param mark: 'x' or 'o', next marker to place on the board
+    :param max_depth: max depth of tree
+    :return: None
+    """
+
+    # check depth
+    if game_tree.depth(parent_node) == max_depth:
+        return
+    # avoid unnecessary get_node function calls
+    parent_state = tree.get_node(parent_node).data
+    # generate every possible next state from the current state
+    new_states = gen_states(parent_state, mark)
+    if new_states is None:
+        return
     else:
-        return False
-
-
-state = np.array([['-', '-', '-'],
-                  ['-', '-', '-'],
-                  ['-', '-', '-']])
-
-for i in range(0, 9):
-    if i % 2 == 0:
-        next_symbol = 'x'
+        n_new_states = len(new_states)
+    # create a new node for every possible new state and add it as a child of the parent node
+    for i in range(n_new_states):
+        game_tree.create_node(parent=parent_node, data=new_states[i])
+    # generate next mark
+    if mark == 'x':
+        next_mark = 'o'
     else:
-        next_symbol = 'o'
-    n_s = get_new_state(state, next_symbol)
-    state = n_s
-    print(state)
+        next_mark = 'x'
+    # call this function on all of the nodes just created
+    children = game_tree.children(parent_node)
+    for i in range(n_new_states):
+        generate_tree(game_tree, children[i].identifier, next_mark, max_depth)
+
+
+s = State(None, (0,0), 'x')
+tree = Tree()
+tree.create_node("Root", "root", data=s)
+
+generate_tree(tree, "root", 'x', 1)
+tree.show(data_property="positions")
