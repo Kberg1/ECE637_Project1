@@ -2,6 +2,7 @@
 import numpy as np
 from tree import Tree
 from tree import Node
+from helpers import get_new_state
 
 
 class TicTacToe:
