@@ -1,5 +1,7 @@
 # %%
 import numpy as np
+from tree import Tree
+from tree import Node
 
 
 class TicTacToe:
@@ -60,49 +62,13 @@ class TicTacToe:
 
     def play_game(self):
         """Maximizer and minimizer take turns playing the game until someone wins"""
-        turnNumber = 0
+        turn_number = 0
         # while self.n_positions_open > 0 and self.is_a_winner == False:
         for _ in range(10):
-            if turnNumber % 2 == 0:
+            if turn_number % 2 == 0:
                 self.maximizer.take_turn()
             else:
                 self.minimizer.take_turn()
 
             # draw board here
             self.draw_board()
-
-
-class Maximizer:
-    """Player which attempts to maximize the evaluation function
-
-    Methods
-    ---------
-    takeTurn - take a turn, maximizing the eval function
-    """
-
-    def __init__(self):
-        print('created maximizer')
-
-    def take_turn(self):
-        print('maximizer taking turn stub')
-
-
-class Minimizer:
-    """Player which attempts to minimize the evaluation function
-
-    Methods
-    ---------
-    takeTurn - take a turn, minimizing the eval function
-    """
-
-    def __init__(self):
-        print('created minimizer')
-
-    def take_turn(self):
-        print('minimizer taking turn stub')
-
-
-player1 = Maximizer()
-player2 = Minimizer()
-game = TicTacToe(player1, player2)
-game.play_game()
