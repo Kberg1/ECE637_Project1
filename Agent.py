@@ -1,5 +1,5 @@
 import numpy as np
-from treelib import Node, Tree
+from treelib import Tree
 
 
 class State:
@@ -47,18 +47,20 @@ class Agent:
     tree: treelib.Tree object - tree which will contain future possible states. Used for decision making.
     """
 
-    def __init__(self, ai_player, board_n_rows=6, board_n_cols=7):
+    def __init__(self, ai_player, board_n_rows=6, board_n_cols=7, n_to_win=4):
         """
         Initializes an agent
 
         :param ai_player: integer - 1 or 2, represents which player the agent is
         :param board_n_rows: number of rows in the game's board
         :param board_n_cols: number of cols in the game's board
+        :param n_to_win: number of consecutive pieces required for a win
         """
 
         self.player = ai_player
         self.board_n_rows = board_n_rows
         self.board_n_cols = board_n_cols
+        self.n_to_win = n_to_win
         self.current_state = None
         self.tree = Tree()
 
@@ -118,11 +120,14 @@ class Agent:
         """
         Generates the game tree based on the starting state and the next player. Assumes tree has a single root node
 
-        :param parent_node: treelib.Node object - node containing state to branch from
+        :param parent_node: treelib.Node object - nid of node containing state to branch from
         :param current_player: integer - 1 or 2 representing player 1 or player 2 respectively
         :param max_depth: integer - max depth of tree
         :return: None
         """
+
+        # TODO this needs stop going deeper on a branch if there has been a winning move already
+        # VERY IMPORTANT ^^^
 
         # check depth
         if self.tree.depth(parent_node) == max_depth:
@@ -147,6 +152,78 @@ class Agent:
         children = self.tree.children(parent_node)
         for i in range(n_new_states):
             self.generate_tree(children[i].identifier, next_player, max_depth)
+
+    def evaluate(self, node, player):
+        # will evaluate similar to way that the connect4 game checks for a winner
+        # ie need to check the horizontal, vertical, and diagonal (top down and bottom up) directions for each
+        # direction, will count max consecutive pieces for each player
+        # points will be awarded to a player if they have consecutive pieces, and points will be taken away from them
+        # if their opponent has consecutive pieces
+
+        print(self.player, node)
+
+    def evaluate_horizontal(self, board, player):
+
+        # these dictionaries will contain the number of consecutive streaks of pieces of each size each player has
+        # so the key : value will be {size of streak : number of streaks of that size}
+        # both the key and the value will be integers
+        # dictionary 1 is for player 1, dictionary 2 is for player 2
+        streaks_overall = {1: {}, 2: {}}
+        # initialize these dictionaries. Note that the 0 key is only there for programmatic convenience later and is not
+        # used in score calculation
+        for i in range(0, self.n_to_win + 1):
+            streaks_overall[1][i] = 0
+            streaks_overall[2][i] = 0
+
+        # make another dictionary for easily keeping track of individual streaks
+        current_streak = {1: 0, 2: 0}
+
+        if player == 1:
+            opponent = 2
+        else:
+            opponent = 1
+
+        for row in range(self.board_n_rows):
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+
+            # look at the first piece in each row
+            prev_piece = board[row, 0]
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1  # TODO make sure this equals 1 if hit, then remove comment
+
+            for col in range(self.board_n_cols):
+                this_piece = board[row, col]
+
+                # 3 possibilities (to consider programmatically) each time another piece is evaluated
+                # 1 - the piece doesn't belong to either player (empty spot)
+                # 2 - the piece belongs to the same player as the last piece seen
+                # 3 - the piece belongs to the other player as compared to the last piece seen
+                if this_piece == 0:  # situation 1
+                    streaks_overall[player][current_streak[player]] += 1
+                    streaks_overall[opponent][current_streak[opponent]] += 1
+                    current_streak[player] = 0
+                    current_streak[opponent] = 0
+                elif this_piece == prev_piece:  # situation 2
+                    current_streak[this_piece] += 1
+                else:  # situation 3
+                    n = min(current_streak[prev_piece], self.n_to_win)  # don't care if streak is longer than n_to_win
+                    streaks_overall[prev_piece][n] += 1
+                    current_streak[prev_piece] = 0
+
+                    current_streak[this_piece] += 1  # TODO make sure this equals 1 if this is hit, then remove comment
+
+                prev_piece = this_piece
+
+        # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
+        # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 10 pts, 4: 50 pts
+        # negative value for all of the opponent pieces
+        score_player = streaks_overall[player][1] + 5 * streaks_overall[player][2] + 10 * streaks_overall[player][3] + \
+            50 * streaks_overall[player][4]
+        score_opponent = streaks_overall[opponent][1] + 5 * streaks_overall[opponent][2] + \
+            10 * streaks_overall[opponent][3] + 50 * streaks_overall[opponent][4]
+        score_total = score_player - score_opponent
+        return score_total
 
 
 # TODO - this is a test, just delete this before merging to master branch
