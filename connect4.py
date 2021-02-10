@@ -168,6 +168,7 @@ class Connect4:
         :return: None
         """
         self.board[row, column] = player
+        self.n_positions_remaining -= 1
 
     def play(self):
         """
