@@ -153,16 +153,12 @@ class Agent:
         for i in range(n_new_states):
             self.generate_tree(children[i].identifier, next_player, max_depth)
 
-    def evaluate(self, node, player):
+    def evaluate(self, board, player):
         # will evaluate similar to way that the connect4 game checks for a winner
         # ie need to check the horizontal, vertical, and diagonal (top down and bottom up) directions for each
         # direction, will count max consecutive pieces for each player
         # points will be awarded to a player if they have consecutive pieces, and points will be taken away from them
         # if their opponent has consecutive pieces
-
-        print(self.player, node)
-
-    def evaluate_horizontal(self, board, player):
 
         # these dictionaries will contain the number of consecutive streaks of pieces of each size each player has
         # so the key : value will be {size of streak : number of streaks of that size}
@@ -183,14 +179,13 @@ class Agent:
         else:
             opponent = 1
 
+        # perform evaluation in horizontal direction
         for row in range(self.board_n_rows):
-            current_streak[player] = 0
-            current_streak[opponent] = 0
 
             # look at the first piece in each row
             prev_piece = board[row, 0]
             if prev_piece != 0:
-                current_streak[prev_piece] += 1  # TODO make sure this equals 1 if hit, then remove comment
+                current_streak[prev_piece] += 1
 
             for col in range(1, self.board_n_cols):
                 this_piece = board[row, col]
@@ -209,13 +204,125 @@ class Agent:
                 else:  # situation 3
                     if prev_piece != 0:
                         n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                        print('n =', n)
                         streaks_overall[prev_piece][n] += 1
                         current_streak[prev_piece] = 0
 
-                    current_streak[this_piece] += 1  # TODO make sure this equals 1 if this is hit, then remove comment
+                    current_streak[this_piece] += 1
 
                 prev_piece = this_piece
+
+            # must account for whatever streak was in progress when each row ended
+            streaks_overall[player][current_streak[player]] += 1
+            streaks_overall[opponent][current_streak[opponent]] += 1
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+
+        # perform evaluation in vertical direction
+        for col in range(self.board_n_cols):
+            prev_piece = board[0, col]
+
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1
+
+            for row in range(1, self.board_n_rows):
+                this_piece = board[row, col]
+
+                if this_piece == 0:  # situation 1
+                    streaks_overall[player][current_streak[player]] += 1
+                    streaks_overall[opponent][current_streak[opponent]] += 1
+                    current_streak[player] = 0
+                    current_streak[opponent] = 0
+                elif this_piece == prev_piece:  # situation 2
+                    current_streak[this_piece] += 1
+                else:  # situation 3
+                    if prev_piece != 0:
+                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
+                        streaks_overall[prev_piece][n] += 1
+                        current_streak[prev_piece] = 0
+
+                    current_streak[this_piece] += 1
+
+                prev_piece = this_piece
+
+            # must account for whatever streak was in progress when each column ended
+            streaks_overall[player][current_streak[player]] += 1
+            streaks_overall[opponent][current_streak[opponent]] += 1
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+
+        # perform evaluation in top down diagonal direction by first walking up the left side of the board,
+        # then walking across the top of the board
+        for row in range(self.board_n_rows-2, -1, -1):  # for each top down diagonal starting at left side of board
+            c = 1
+            r = row + 1
+
+            prev_piece = board[row, 0]
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1
+            while r < self.board_n_rows and c < self.board_n_cols:
+                this_piece = board[r, c]
+
+                if this_piece == 0:  # situation 1
+                    streaks_overall[player][current_streak[player]] += 1
+                    streaks_overall[opponent][current_streak[opponent]] += 1
+                    current_streak[player] = 0
+                    current_streak[opponent] = 0
+                elif this_piece == prev_piece:  # situation 2
+                    current_streak[this_piece] += 1
+                else:  # situation 3
+                    if prev_piece != 0:
+                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
+                        streaks_overall[prev_piece][n] += 1
+                        current_streak[prev_piece] = 0
+
+                    current_streak[this_piece] += 1
+
+                prev_piece = this_piece
+                r += 1
+                c += 1
+
+            # must account for whatever streak was in progress when each diagonal ended
+            streaks_overall[player][current_streak[player]] += 1
+            streaks_overall[opponent][current_streak[opponent]] += 1
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+
+        # keep performing evaluation in top down diagonals, walking across top of board
+        for col in range(1, self.board_n_cols - 2):
+            r = 1
+            c = col + 1
+
+            prev_piece = board[0, col]
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1
+            while r < self.board_n_rows and c < self.board_n_cols:
+                this_piece = board[r, c]
+
+                if this_piece == 0:  # situation 1
+                    streaks_overall[player][current_streak[player]] += 1
+                    streaks_overall[opponent][current_streak[opponent]] += 1
+                    current_streak[player] = 0
+                    current_streak[opponent] = 0
+                elif this_piece == prev_piece:  # situation 2
+                    current_streak[this_piece] += 1
+                else:  # situation 3
+                    if prev_piece != 0:
+                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
+                        streaks_overall[prev_piece][n] += 1
+                        current_streak[prev_piece] = 0
+
+                    current_streak[this_piece] += 1
+
+                prev_piece = this_piece
+                r += 1
+                c += 1
+
+            # must account for whatever streak was in progress when each diagonal ended
+            streaks_overall[player][current_streak[player]] += 1
+            streaks_overall[opponent][current_streak[opponent]] += 1
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+
 
         # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
         # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 15 pts, 4: 50 pts
