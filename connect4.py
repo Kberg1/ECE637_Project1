@@ -12,19 +12,23 @@ class Connect4:
     n_cols: integer - number of columns on board. Defaults to 7
     n_to_win: integer - number of consecutive pieces necessary to win. Defaults to 4. See warning in is_diagonal_win
     n_positions_remaining: integer - number of open positions remaining on the board
+    ai_agent: integer - 0 -> no AI agent, 1 -> Player 1 is an agent, 2 -> Player 2 is an agent, 3 -> Both are agents
     """
-    def __init__(self, n_rows=6, n_cols=7, n_to_win=4):
+    def __init__(self, n_rows=6, n_cols=7, n_to_win=4, ai_agent=0):
         """
         Generate an empty connect4 board with n_rows and n_cols. Sets attributes.
 
         :param n_rows: integer - number of rows on board
         :param n_cols: integer - number of columns on board
+        :param n_to_win: integer - number of consecutive pieces required for a win
+        :param ai_agent: integer - 0 -> no AI agent, 1 -> Player 1 is an AI agent, 2 -> Player 2 is an AI agent
         """
         self.board = np.zeros((n_rows, n_cols), dtype=int)
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.n_to_win = n_to_win
         self.n_positions_remaining = n_rows * n_cols
+        self.ai_agent = ai_agent
 
     def is_valid_move(self, row, col):
         """
@@ -177,6 +181,7 @@ class Connect4:
         """
 
         player = 1
+        # TODO - check to see if either player is an AI agent. If so, instantiate agent(s) here
 
         while True:
             self.draw_board()
@@ -184,8 +189,12 @@ class Connect4:
                 print('No moves remaining. The game has ended in a draw.')
                 break
             print("Player ", player, "'s turn.", sep='')
-            row = int(input('Enter row: '))
-            column = int(input('Enter column: '))
+            if self.ai_agent != 3 and player != self.ai_agent:
+                row = int(input('Enter row: '))
+                column = int(input('Enter column: '))
+            # TODO - if player is AI, this is where they take the current state and select their move
+            # else:
+            # take current state, generate tree, apply min max, select move by setting row and column local vars
 
             if not self.is_valid_move(row, column):
                 print("Invalid selection")
@@ -193,7 +202,7 @@ class Connect4:
             else:
                 self.execute_move(row, column, player)
             if self.is_winning_move(row, column, player):
-                print("We have a winner!")
+                print("Player", player, "wins!")
                 self.draw_board()
                 break
             else:
