@@ -12,7 +12,8 @@ class State:
 
     def __init__(self, prev_state, loc, marker):
         if prev_state is None:
-            self.positions = np.array([['-', '-', '-'],
+            # TODO randomize first move
+            self.positions = np.array([[marker, '-', '-'],
                                        ['-', '-', '-'],
                                        ['-', '-', '-']])
             self.n_pos_open = self.positions.shape[0] * self.positions.shape[1]
@@ -41,6 +42,17 @@ def gen_states(start_state, mark):
     return possible_states
 
 
+def evaluate(state, marker):
+    """Evaluate the given state for the given player
+
+    :param state: State object representing the state to be evaluated
+    :param marker: 'x' or 'o' representing the player whose status is to be evaluated
+    :return: integer representing the value of the provided state
+    """
+
+
+
+
 def generate_tree(game_tree, parent_node, mark, max_depth):
     """Generates the game tree based on the starting state and the next player
 
@@ -55,7 +67,7 @@ def generate_tree(game_tree, parent_node, mark, max_depth):
     if game_tree.depth(parent_node) == max_depth:
         return
     # avoid unnecessary get_node function calls
-    parent_state = tree.get_node(parent_node).data
+    parent_state = game_tree.get_node(parent_node).data
     # generate every possible next state from the current state
     new_states = gen_states(parent_state, mark)
     if new_states is None:
@@ -80,5 +92,5 @@ s = State(None, (0,0), 'x')
 tree = Tree()
 tree.create_node("Root", "root", data=s)
 
-generate_tree(tree, "root", 'x', 1)
+generate_tree(tree, "root", 'o', 3)
 tree.show(data_property="positions")
