@@ -192,7 +192,7 @@ class Agent:
             if prev_piece != 0:
                 current_streak[prev_piece] += 1  # TODO make sure this equals 1 if hit, then remove comment
 
-            for col in range(self.board_n_cols):
+            for col in range(1, self.board_n_cols):
                 this_piece = board[row, col]
 
                 # 3 possibilities (to consider programmatically) each time another piece is evaluated
@@ -207,18 +207,20 @@ class Agent:
                 elif this_piece == prev_piece:  # situation 2
                     current_streak[this_piece] += 1
                 else:  # situation 3
-                    n = min(current_streak[prev_piece], self.n_to_win)  # don't care if streak is longer than n_to_win
-                    streaks_overall[prev_piece][n] += 1
-                    current_streak[prev_piece] = 0
+                    if prev_piece != 0:
+                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
+                        print('n =', n)
+                        streaks_overall[prev_piece][n] += 1
+                        current_streak[prev_piece] = 0
 
                     current_streak[this_piece] += 1  # TODO make sure this equals 1 if this is hit, then remove comment
 
                 prev_piece = this_piece
 
         # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
-        # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 10 pts, 4: 50 pts
+        # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 15 pts, 4: 50 pts
         # negative value for all of the opponent pieces
-        score_player = streaks_overall[player][1] + 5 * streaks_overall[player][2] + 10 * streaks_overall[player][3] + \
+        score_player = streaks_overall[player][1] + 5 * streaks_overall[player][2] + 15 * streaks_overall[player][3] + \
             50 * streaks_overall[player][4]
         score_opponent = streaks_overall[opponent][1] + 5 * streaks_overall[opponent][2] + \
             10 * streaks_overall[opponent][3] + 50 * streaks_overall[opponent][4]
@@ -235,3 +237,16 @@ a.tree.create_node("Root", "root", data=a.current_state)
 a.generate_tree("root", player, 3)
 a.tree.show(data_property="positions")
 """
+
+# horizontal eval function test
+player = 1
+a = Agent(player)
+test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 1, 0, 0, 0, 0],
+                       [0, 0, 2, 2, 2, 0, 0],
+                       [0, 0, 2, 1, 1, 0, 0],
+                       [0, 1, 2, 1, 1, 2, 0]], dtype=int)
+
+s = a.evaluate_horizontal(test_state, player)
+print(s)
