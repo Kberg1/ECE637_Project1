@@ -153,7 +153,60 @@ class Agent:
         for i in range(n_new_states):
             self.generate_tree(children[i].identifier, next_player, max_depth)
 
+    def streak_accounting(self, prev_piece, this_piece, player, opponent, streaks_overall, current_streak):
+        """
+        Helper method called by evaluate. Used just to eliminate repeated code
+
+        :param prev_piece: integer - previous piece found
+        :param this_piece: integer - most recent piece found
+        :param player: integer - 1 or 2, designates which player is which
+        :param opponent: integer - 1 or 2, designates which player is which
+        :param streaks_overall: dictionary keeping track of overall streak occurrences for each player
+        :param current_streak: dictionary keeping track of current streak for each player
+        :return:
+        """
+        # 3 possibilities (to consider programmatically) each time another piece is evaluated
+        # 1 - the piece doesn't belong to either player (empty spot)
+        # 2 - the piece belongs to the same player as the last piece seen
+        # 3 - the piece belongs to the other player as compared to the last piece seen
+        if this_piece == 0:  # situation 1
+            streaks_overall[player][current_streak[player]] += 1
+            streaks_overall[opponent][current_streak[opponent]] += 1
+            current_streak[player] = 0
+            current_streak[opponent] = 0
+        elif this_piece == prev_piece:  # situation 2
+            current_streak[this_piece] += 1
+        else:  # situation 3
+            if prev_piece != 0:
+                n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
+                streaks_overall[prev_piece][n] += 1
+                current_streak[prev_piece] = 0
+
+            current_streak[this_piece] += 1
+
+    def streak_cleanup(self, player, opponent, streaks_overall, current_streak):
+        """
+        Helper method called by evaluate. Used just to eliminate repeated code
+
+        :param player: integer - 1 or 2, designates which player is which
+        :param opponent: integer - 1 or 2, designates which player is which
+        :param streaks_overall: dictionary keeping track of overall streak occurrences for each player
+        :param current_streak: dictionary keeping track of current streak for each player
+        :return:
+        """
+        streaks_overall[player][current_streak[player]] += 1
+        streaks_overall[opponent][current_streak[opponent]] += 1
+        current_streak[player] = 0
+        current_streak[opponent] = 0
+
     def evaluate(self, board, player):
+        """
+        Function used to evaluate a position. Only called on leaf nodes during minimax algorithm
+
+        :param board: 2D NumPy array of occupied positions on the board
+        :param player: integer - 1 or 2, used to differentiate between player and opponent
+        :return:
+        """
         # will evaluate similar to way that the connect4 game checks for a winner
         # ie need to check the horizontal, vertical, and diagonal (top down and bottom up) directions for each
         # direction, will count max consecutive pieces for each player
@@ -189,33 +242,11 @@ class Agent:
 
             for col in range(1, self.board_n_cols):
                 this_piece = board[row, col]
-
-                # 3 possibilities (to consider programmatically) each time another piece is evaluated
-                # 1 - the piece doesn't belong to either player (empty spot)
-                # 2 - the piece belongs to the same player as the last piece seen
-                # 3 - the piece belongs to the other player as compared to the last piece seen
-                if this_piece == 0:  # situation 1
-                    streaks_overall[player][current_streak[player]] += 1
-                    streaks_overall[opponent][current_streak[opponent]] += 1
-                    current_streak[player] = 0
-                    current_streak[opponent] = 0
-                elif this_piece == prev_piece:  # situation 2
-                    current_streak[this_piece] += 1
-                else:  # situation 3
-                    if prev_piece != 0:
-                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                        streaks_overall[prev_piece][n] += 1
-                        current_streak[prev_piece] = 0
-
-                    current_streak[this_piece] += 1
-
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
                 prev_piece = this_piece
 
             # must account for whatever streak was in progress when each row ended
-            streaks_overall[player][current_streak[player]] += 1
-            streaks_overall[opponent][current_streak[opponent]] += 1
-            current_streak[player] = 0
-            current_streak[opponent] = 0
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
         # perform evaluation in vertical direction
         for col in range(self.board_n_cols):
@@ -226,29 +257,11 @@ class Agent:
 
             for row in range(1, self.board_n_rows):
                 this_piece = board[row, col]
-
-                if this_piece == 0:  # situation 1
-                    streaks_overall[player][current_streak[player]] += 1
-                    streaks_overall[opponent][current_streak[opponent]] += 1
-                    current_streak[player] = 0
-                    current_streak[opponent] = 0
-                elif this_piece == prev_piece:  # situation 2
-                    current_streak[this_piece] += 1
-                else:  # situation 3
-                    if prev_piece != 0:
-                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                        streaks_overall[prev_piece][n] += 1
-                        current_streak[prev_piece] = 0
-
-                    current_streak[this_piece] += 1
-
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
                 prev_piece = this_piece
 
             # must account for whatever streak was in progress when each column ended
-            streaks_overall[player][current_streak[player]] += 1
-            streaks_overall[opponent][current_streak[opponent]] += 1
-            current_streak[player] = 0
-            current_streak[opponent] = 0
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
         # perform evaluation in top down diagonal direction by first walking up the left side of the board,
         # then walking across the top of the board
@@ -261,31 +274,14 @@ class Agent:
                 current_streak[prev_piece] += 1
             while r < self.board_n_rows and c < self.board_n_cols:
                 this_piece = board[r, c]
-
-                if this_piece == 0:  # situation 1
-                    streaks_overall[player][current_streak[player]] += 1
-                    streaks_overall[opponent][current_streak[opponent]] += 1
-                    current_streak[player] = 0
-                    current_streak[opponent] = 0
-                elif this_piece == prev_piece:  # situation 2
-                    current_streak[this_piece] += 1
-                else:  # situation 3
-                    if prev_piece != 0:
-                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                        streaks_overall[prev_piece][n] += 1
-                        current_streak[prev_piece] = 0
-
-                    current_streak[this_piece] += 1
-
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
                 prev_piece = this_piece
+
                 r += 1
                 c += 1
 
             # must account for whatever streak was in progress when each diagonal ended
-            streaks_overall[player][current_streak[player]] += 1
-            streaks_overall[opponent][current_streak[opponent]] += 1
-            current_streak[player] = 0
-            current_streak[opponent] = 0
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
         # keep performing evaluation in top down diagonals, walking across top of board
         for col in range(1, self.board_n_cols - 2):
@@ -297,40 +293,61 @@ class Agent:
                 current_streak[prev_piece] += 1
             while r < self.board_n_rows and c < self.board_n_cols:
                 this_piece = board[r, c]
-
-                if this_piece == 0:  # situation 1
-                    streaks_overall[player][current_streak[player]] += 1
-                    streaks_overall[opponent][current_streak[opponent]] += 1
-                    current_streak[player] = 0
-                    current_streak[opponent] = 0
-                elif this_piece == prev_piece:  # situation 2
-                    current_streak[this_piece] += 1
-                else:  # situation 3
-                    if prev_piece != 0:
-                        n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                        streaks_overall[prev_piece][n] += 1
-                        current_streak[prev_piece] = 0
-
-                    current_streak[this_piece] += 1
-
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
                 prev_piece = this_piece
+
                 r += 1
                 c += 1
 
             # must account for whatever streak was in progress when each diagonal ended
-            streaks_overall[player][current_streak[player]] += 1
-            streaks_overall[opponent][current_streak[opponent]] += 1
-            current_streak[player] = 0
-            current_streak[opponent] = 0
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
+        # perform evaluation in bottom up diagonal direction by first walking up the right side of the board,
+        # then walking left across the top of the board
+        for row in range(self.board_n_rows - 2, -1, -1):  # for each top down diagonal starting at left side of board
+            c = self.board_n_cols - 2  # 2nd to last column
+            r = row + 1
+
+            prev_piece = board[row, self.board_n_cols-1]
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1
+            while r < self.board_n_rows and c > 0:
+                this_piece = board[r, c]
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
+                prev_piece = this_piece
+
+                r += 1
+                c -= 1
+
+            # must account for whatever streak was in progress when each diagonal ended
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
+
+        # keep performing evaluation in bottom up diagonals, walking left across top of board
+        for col in range(self.board_n_cols - 2, 0, -1):
+            r = 1
+            c = col - 1
+
+            prev_piece = board[0, col]
+            if prev_piece != 0:
+                current_streak[prev_piece] += 1
+            while r < self.board_n_rows and c > 0:
+                this_piece = board[r, c]
+                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
+                prev_piece = this_piece
+
+                r += 1
+                c -= 1
+
+            # must account for whatever streak was in progress when each diagonal ended
+            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
         # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
         # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 15 pts, 4: 50 pts
         # negative value for all of the opponent pieces
-        score_player = streaks_overall[player][1] + 5 * streaks_overall[player][2] + 15 * streaks_overall[player][3] + \
-            50 * streaks_overall[player][4]
-        score_opponent = streaks_overall[opponent][1] + 5 * streaks_overall[opponent][2] + \
-            10 * streaks_overall[opponent][3] + 50 * streaks_overall[opponent][4]
+        score_player = 5 * streaks_overall[player][2] + 25 * streaks_overall[player][3] + \
+            125 * streaks_overall[player][4]
+        score_opponent = 5 * streaks_overall[opponent][2] + \
+            25 * streaks_overall[opponent][3] + 125 * streaks_overall[opponent][4]
         score_total = score_player - score_opponent
         return score_total
 
@@ -355,5 +372,5 @@ test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
                        [0, 0, 2, 1, 1, 0, 0],
                        [0, 1, 2, 1, 1, 2, 0]], dtype=int)
 
-s = a.evaluate_horizontal(test_state, player)
+s = a.evaluate(test_state, player)
 print(s)
