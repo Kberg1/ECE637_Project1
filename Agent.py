@@ -199,6 +199,9 @@ class Agent:
         :param current_streak: dictionary keeping track of current streak for each player
         :return:
         """
+
+        current_streak[player] = min(current_streak[player], self.n_to_win)
+        current_streak[opponent] = min(current_streak[opponent], self.n_to_win)
         streaks_overall[player][current_streak[player]] += 1
         streaks_overall[opponent][current_streak[opponent]] += 1
         current_streak[player] = 0
@@ -352,7 +355,7 @@ class Agent:
         score_player = 5 * streaks_overall[player][2] + 25 * streaks_overall[player][3] + \
             125 * streaks_overall[player][4]
         score_opponent = 5 * streaks_overall[opponent][2] + \
-            25 * streaks_overall[opponent][3] + 125 * streaks_overall[opponent][4]
+            50 * streaks_overall[opponent][3] + 200 * streaks_overall[opponent][4]
         score_total = score_player - score_opponent
         return score_total
 
@@ -388,7 +391,7 @@ class Agent:
             del self.tree
 
         # set the max depth of the tree
-        depth_limit = 4
+        depth_limit = 5
 
         self.set_agent_state(board_state, n_pos_open)
         self.tree = Tree()
