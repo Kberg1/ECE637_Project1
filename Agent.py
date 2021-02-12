@@ -63,7 +63,7 @@ class Agent:
         self.board_n_rows = board_n_rows
         self.board_n_cols = board_n_cols
         self.n_to_win = n_to_win
-        self.current_state = None
+        self.current_state = State(ai_player)
         self.tree = Tree()
 
     def set_agent_state(self, board_state, n_pos_open):
@@ -171,6 +171,10 @@ class Agent:
         # 1 - the piece doesn't belong to either player (empty spot)
         # 2 - the piece belongs to the same player as the last piece seen
         # 3 - the piece belongs to the other player as compared to the last piece seen
+
+        # avoid OOB indexing
+        current_streak[player] = min(current_streak[player], self.n_to_win)
+        current_streak[opponent] = min(current_streak[opponent], self.n_to_win)
         if this_piece == 0:  # situation 1
             streaks_overall[player][current_streak[player]] += 1
             streaks_overall[opponent][current_streak[opponent]] += 1
@@ -180,8 +184,7 @@ class Agent:
             current_streak[this_piece] += 1
         else:  # situation 3
             if prev_piece != 0:
-                n = min(current_streak[prev_piece], self.n_to_win)  # avoid OOB indexing
-                streaks_overall[prev_piece][n] += 1
+                streaks_overall[prev_piece][current_streak[prev_piece]] += 1
                 current_streak[prev_piece] = 0
 
             current_streak[this_piece] += 1
@@ -355,25 +358,35 @@ class Agent:
 
     def minimax(self, current_node_nid):
         current_node_object = self.tree.get_node(current_node_nid)
-        if current_node_object.depth() % 2 == 1:
+        if self.tree.depth(current_node_nid) % 2 == 1:
             is_min_node = True
         else:
             is_min_node = False
 
         if current_node_object.is_leaf():
-            return self.evaluate(self.current_state.positions, self.player)
-        elif is_min_node:
-            children_nids = self.tree.children(current_node_nid)
-            children_vals = [self.minimax(children_nids[i]) for i in children_nids]
+            move_made = current_node_object.data.move
+            return self.evaluate(current_node_object.data.positions, self.player), move_made
+        else:
+            children_nids = self.tree.is_branch(current_node_nid)
+            # num_nids = len(children_nids)
+            # children_vals, moves_made_list = [self.minimax(children_nids[i]) for i in range(num_nids)]
+            children_vals = []
+            moves_made_list = []
+            for i in range(len(children_nids)):
+                val, move = self.minimax(children_nids[i])
+                children_vals.append(val)
+                moves_made_list.append(move)
+
+        if is_min_node:
             min_child_val = min(children_vals)
             min_child_val_idx = children_vals.index(min_child_val)
-            return min_child_val, min_child_val_idx
+            move_made = moves_made_list[min_child_val_idx]
+            return min_child_val, move_made
         else:  # is a max node
-            children_nids = self.tree.children(current_node_nid)
-            children_vals = [self.minimax(children_nids[i]) for i in children_nids]
             max_child_val = max(children_vals)
             max_child_val_idx = children_vals.index(max_child_val)
-            return max_child_val, max_child_val_idx
+            move_made = moves_made_list[max_child_val_idx]
+            return max_child_val, move_made
 
     def ai_move(self, board_state, n_pos_open):
         # set up for minimax algo run
@@ -385,9 +398,11 @@ class Agent:
         depth_limit = 4
 
         self.set_agent_state(board_state, n_pos_open)
-        self.tree = Tree
-        self.tree.create_node("Root", "root", data=self.state)
+        self.tree = Tree()
+        self.tree.create_node("Root", "root", data=self.current_state)
         self.generate_tree("root", self.player, depth_limit)
+        value, move = self.minimax("root")
+        return value, move
 
 
 # TODO - this is a test, just delete this before merging to master branch
@@ -395,13 +410,20 @@ class Agent:
 player = 1
 a = Agent(player)
 a.current_state = State(player)
+test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 1, 0, 0, 0, 0],
+                       [0, 0, 2, 2, 2, 0, 0],
+                       [0, 0, 2, 1, 1, 0, 0],
+                       [0, 1, 2, 1, 1, 2, 0]], dtype=int)
+a.set_agent_state(test_state, 30)
 a.tree.create_node("Root", "root", data=a.current_state)
-a.generate_tree("root", player, 3)
+a.generate_tree("root", player, 5)
 a.tree.show(data_property="positions")
 """
 
-# horizontal eval function test
-"""
+# minimax test
+
 player = 1
 a = Agent(player)
 test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
@@ -411,6 +433,5 @@ test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
                        [0, 0, 2, 1, 1, 0, 0],
                        [0, 1, 2, 1, 1, 2, 0]], dtype=int)
 
-s = a.evaluate(test_state, player)
-print(s)
-"""
+r, c = a.ai_move(test_state, 30)
+print('Next move should be row', c[0], 'and column', c[1])
