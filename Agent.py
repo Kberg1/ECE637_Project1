@@ -364,29 +364,23 @@ class Agent:
             is_min_node = False
 
         if current_node_object.is_leaf():
-            move_made = current_node_object.data.move
-            return self.evaluate(current_node_object.data.positions, self.player), move_made
+            return self.evaluate(current_node_object.data.positions, self.player)
         else:
             children_nids = self.tree.is_branch(current_node_nid)
-            # num_nids = len(children_nids)
-            # children_vals, moves_made_list = [self.minimax(children_nids[i]) for i in range(num_nids)]
             children_vals = []
             moves_made_list = []
             for i in range(len(children_nids)):
-                val, move = self.minimax(children_nids[i])
+                val = self.minimax(children_nids[i])
                 children_vals.append(val)
-                moves_made_list.append(move)
 
         if is_min_node:
             min_child_val = min(children_vals)
             min_child_val_idx = children_vals.index(min_child_val)
-            move_made = moves_made_list[min_child_val_idx]
-            return min_child_val, move_made
+            return min_child_val, min_child_val_idx
         else:  # is a max node
             max_child_val = max(children_vals)
             max_child_val_idx = children_vals.index(max_child_val)
-            move_made = moves_made_list[max_child_val_idx]
-            return max_child_val, move_made
+            return max_child_val, max_child_val_idx
 
     def ai_move(self, board_state, n_pos_open):
         # set up for minimax algo run
@@ -401,7 +395,9 @@ class Agent:
         self.tree = Tree()
         self.tree.create_node("Root", "root", data=self.current_state)
         self.generate_tree("root", self.player, depth_limit)
-        value, move = self.minimax("root")
+        value, child = self.minimax("root")
+        root_children = self.tree.children("root")
+        move = root_children[child].data.move
         return value, move
 
 
@@ -423,7 +419,7 @@ a.tree.show(data_property="positions")
 """
 
 # minimax test
-
+"""
 player = 1
 a = Agent(player)
 test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
@@ -435,3 +431,4 @@ test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
 
 r, c = a.ai_move(test_state, 30)
 print('Next move should be row', c[0], 'and column', c[1])
+"""
