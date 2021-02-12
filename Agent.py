@@ -1,5 +1,5 @@
 import numpy as np
-from treelib import Tree, Node
+from treelib import Tree
 
 
 class State:
@@ -364,13 +364,12 @@ class Agent:
             is_min_node = False
 
         if current_node_object.is_leaf():
-            return self.evaluate(current_node_object.data.positions, self.player)
+            return self.evaluate(current_node_object.data.positions, self.player), -1
         else:
             children_nids = self.tree.is_branch(current_node_nid)
             children_vals = []
-            moves_made_list = []
             for i in range(len(children_nids)):
-                val = self.minimax(children_nids[i])
+                val, throwaway_idx = self.minimax(children_nids[i])
                 children_vals.append(val)
 
         if is_min_node:
@@ -398,37 +397,4 @@ class Agent:
         value, child = self.minimax("root")
         root_children = self.tree.children("root")
         move = root_children[child].data.move
-        return value, move
-
-
-# TODO - this is a test, just delete this before merging to master branch
-"""
-player = 1
-a = Agent(player)
-a.current_state = State(player)
-test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 1, 0, 0, 0, 0],
-                       [0, 0, 2, 2, 2, 0, 0],
-                       [0, 0, 2, 1, 1, 0, 0],
-                       [0, 1, 2, 1, 1, 2, 0]], dtype=int)
-a.set_agent_state(test_state, 30)
-a.tree.create_node("Root", "root", data=a.current_state)
-a.generate_tree("root", player, 5)
-a.tree.show(data_property="positions")
-"""
-
-# minimax test
-"""
-player = 1
-a = Agent(player)
-test_state = np.array([[0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 1, 0, 0, 0, 0],
-                       [0, 0, 2, 2, 2, 0, 0],
-                       [0, 0, 2, 1, 1, 0, 0],
-                       [0, 1, 2, 1, 1, 2, 0]], dtype=int)
-
-r, c = a.ai_move(test_state, 30)
-print('Next move should be row', c[0], 'and column', c[1])
-"""
+        return move

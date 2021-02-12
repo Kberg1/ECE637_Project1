@@ -1,4 +1,5 @@
 import numpy as np
+import Agent
 
 
 class Connect4:
@@ -181,6 +182,7 @@ class Connect4:
         """
 
         player = 1
+        ai_opponent = Agent.Agent(self.ai_agent)
         # TODO - check to see if either player is an AI agent. If so, instantiate agent(s) here
 
         while True:
@@ -192,15 +194,18 @@ class Connect4:
             if self.ai_agent != 3 and player != self.ai_agent:
                 row = int(input('Enter row: '))
                 column = int(input('Enter column: '))
-            # TODO - if player is AI, this is where they take the current state and select their move
-            # else:
-            # take current state, generate tree, apply min max, select move by setting row and column local vars
-
-            if not self.is_valid_move(row, column):
-                print("Invalid selection")
-                continue
+                if self.is_valid_move(row, column):
+                    self.execute_move(row, column, player)
+                else:
+                    print("Invalid selection")
+                    continue
             else:
-                self.execute_move(row, column, player)
+                auto_move = ai_opponent.ai_move(self.board, self.n_positions_remaining)
+                row = auto_move[0]
+                column = auto_move[1]
+                print("Computer chose", auto_move)
+                self.execute_move(row, column, self.ai_agent)  # TODO fix hard code
+
             if self.is_winning_move(row, column, player):
                 print("Player", player, "wins!")
                 self.draw_board()
@@ -212,5 +217,5 @@ class Connect4:
                     player = 1
 
 
-game = Connect4()
+game = Connect4(ai_agent=2)
 game.play()
