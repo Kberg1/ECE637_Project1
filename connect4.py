@@ -178,6 +178,7 @@ class Connect4:
         for column in range(self.n_cols):
             print(column, end=' ')
         print()
+        print()
 
     def render_gui(self, screen):
         """
@@ -242,7 +243,11 @@ class Connect4:
         """
         pygame.init()
         player = 1
-        ai_opponent = Agent.Agent(self.ai_agent)
+        if self.ai_agent == 3:  # two AI players
+            agent1 = Agent.Agent(1)
+            agent2 = Agent.Agent(2)
+        else:
+            ai_opponent = Agent.Agent(self.ai_agent)
         running = True
         self.draw_board()
         screen = pygame.display.set_mode(self.screen_size)
@@ -252,6 +257,11 @@ class Connect4:
         font = pygame.font.SysFont('calibri', 50)
 
         while running:
+            if self.n_positions_remaining == 0:
+                banner_text = font.render("Draw - No Winners Here", 1, self.blue)
+                screen.blit(banner_text, (25, 25))
+                break
+
             if player == 1:
                 color = self.red
             else:
@@ -305,7 +315,14 @@ class Connect4:
 
             # note that this is outside the event loop, but still in the while running loop
             if self.ai_agent == 3 or self.ai_agent == player:
-                r_c = ai_opponent.ai_move(self.board, self.n_positions_remaining)
+                # if both players are ai agents
+                if self.ai_agent == 3:
+                    if player == 1:
+                        r_c = agent1.ai_move(self.board, self.n_positions_remaining)
+                    else:  # player = 2
+                        r_c = agent1.ai_move(self.board, self.n_positions_remaining)
+                else:
+                    r_c = ai_opponent.ai_move(self.board, self.n_positions_remaining)
                 row = r_c[0]
                 column = r_c[1]
                 self.execute_move(row, column, player)
@@ -317,6 +334,7 @@ class Connect4:
                         banner_text = font.render("The machines have risen!", 1, color)
                     else:
                         message = "Agent " + str(player) + " is the winner!"
+                        banner_text = font.render(message, 1, color)
 
                     screen.blit(banner_text, (25, 25))
                     running = False
@@ -332,5 +350,6 @@ class Connect4:
         # when the game is over, delay before closing the screen, then exit
         pygame.time.wait(5000)
 
-game = Connect4(ai_agent=1)
+
+game = Connect4(ai_agent=3)
 game.play()

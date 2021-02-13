@@ -350,12 +350,10 @@ class Agent:
             self.streak_cleanup(player, opponent, streaks_overall, current_streak)
 
         # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
-        # score - each streak gets the following score. 1: 1 pt, 2: 5 pts, 3: 15 pts, 4: 50 pts
-        # negative value for all of the opponent pieces
         score_player = 5 * streaks_overall[player][2] + 25 * streaks_overall[player][3] + \
-            125 * streaks_overall[player][4]
-        score_opponent = 10 * streaks_overall[opponent][2] + \
-            50 * streaks_overall[opponent][3] + 250 * streaks_overall[opponent][4]
+            125 * streaks_overall[player][4]**4
+        score_opponent = 5 * streaks_overall[opponent][2] + \
+            25 * streaks_overall[opponent][3]**2 + 125 * streaks_overall[opponent][4]**3
         score_total = score_player - score_opponent
         return score_total
 
@@ -377,11 +375,21 @@ class Agent:
 
         if is_min_node:
             min_child_val = min(children_vals)
-            min_child_val_idx = children_vals.index(min_child_val)
+            repeats = [children_vals[i] for i in range(len(children_vals)) if children_vals[i] == min_child_val]
+            if len(repeats) > 1:
+                repeat_indices = [i for i in range(len(children_vals)) if children_vals[i] == min_child_val]
+                min_child_val_idx = np.random.choice(repeat_indices)
+            else:
+                min_child_val_idx = children_vals.index(min_child_val)
             return min_child_val, min_child_val_idx
         else:  # is a max node
             max_child_val = max(children_vals)
-            max_child_val_idx = children_vals.index(max_child_val)
+            repeats = [children_vals[i] for i in range(len(children_vals)) if children_vals[i] == max_child_val]
+            if len(repeats) > 1:
+                repeat_indices = [i for i in range(len(children_vals)) if children_vals[i] == max_child_val]
+                max_child_val_idx = np.random.choice(repeat_indices)
+            else:
+                max_child_val_idx = children_vals.index(max_child_val)
             return max_child_val, max_child_val_idx
 
     def ai_move(self, board_state, n_pos_open):
@@ -391,7 +399,7 @@ class Agent:
             del self.tree
 
         # set the max depth of the tree
-        depth_limit = 4
+        depth_limit = 5
 
         self.set_agent_state(board_state, n_pos_open)
         self.tree = Tree()
