@@ -22,6 +22,7 @@ class State:
             self.positions[row, column] = current_player
             self.move = (row, column)
             self.n_pos_open = prev_state.n_pos_open - 1
+        self.win = False
 
     def set_state(self, board, n_positions_open):
         """
@@ -92,8 +93,10 @@ class Agent:
         for row in range(self.board_n_rows):
             for col in range(self.board_n_cols):
                 if self.is_valid_move(row, col, start_state.positions):
-                    possible_states.append(State(current_player, start_state, row, col))
-                    # TODO - if this move is a winning move, need to mark the state as such
+                    s = State(current_player, start_state, row, col)
+                    if self.is_winning_move(row, col, current_player, s.positions):
+                        s.win = True
+                    possible_states.append(s)
         return possible_states
 
     def is_valid_move(self, row, col, board_positions):
@@ -118,6 +121,101 @@ class Agent:
         else:
             return True
 
+    def is_horizontal_win(self, row, player, board):
+        """
+        Checks if a move in a given row results in a win in the horizontal direction
+
+        :param row: integer - row to check for horizontal win
+        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
+        :param board: 2d NumPy array with board states
+        :return: boolean - True if designated player has won, False otherwise
+        """
+        n_consecutive_pieces = 0
+        for column in range(self.board_n_cols):
+            if board[row, column] == player:
+                n_consecutive_pieces += 1
+                if n_consecutive_pieces == self.n_to_win:
+                    break
+            else:
+                n_consecutive_pieces = 0
+
+        if n_consecutive_pieces == self.n_to_win:
+            return True
+        else:
+            return False
+
+    def is_vertical_win(self, column, player, board):
+        """
+        Checks if a move in a given column results in a win in the vertical direction
+
+        :param column: integer - column to check for vertical win
+        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
+        :param board: 2d NumPy array with board states
+        :return: boolean - True if designated player has won, False otherwise
+        """
+
+        n_consecutive_pieces = 0
+        for row in range(self.board_n_rows):
+            if board[row, column] == player:
+                n_consecutive_pieces += 1
+                if n_consecutive_pieces == self.n_to_win:
+                    break
+            else:
+                n_consecutive_pieces = 0
+
+        if n_consecutive_pieces >= self.n_to_win:
+            return True
+        else:
+            return False
+
+    def is_diagonal_win(self, player, board):
+        """
+        Brute force check to see if the most recent move results in a win in the diagonal direction
+
+        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
+        :param board: 2d NumPy array with board states
+        :return: boolean - True if designated player has won, False otherwise
+        """
+
+        # VERY IMPORTANT
+        # NOTE that if self.n_to_win != 4, the hardcoded checks below must also be changed
+        # I couldn't figure out how to do this other than the unfortunate hardcode
+
+        # There is only one way to win diagonally, but two ways to consider it programmatically
+        # 1 - top down - start on the top left side of the board, move down and right checking pieces along the way
+        # 2 - bottom up - start on the left bottom side of the board, move up and right checking pieces along the way
+
+        # top down. recall that the top left position is [0,0]
+        for column in range(self.board_n_cols - self.n_to_win + 1):
+            for row in range(self.board_n_rows - self.n_to_win + 1):
+                if board[row, column] == board[row + 1, column + 1] == board[row + 2, column + 2] == \
+                        board[row + 3, column + 3] == player:
+                    return True
+
+        # bottom up. recall that the bottom left position is [n_rows-1, 0]
+        for column in range(self.board_n_cols - self.n_to_win + 1):
+            for row in range(self.board_n_rows - self.n_to_win + 1, self.board_n_rows):
+                if board[row, column] == board[row - 1, column + 1] == board[row - 2, column + 2] == \
+                        board[row - 3, column + 3] == player:
+                    return True
+
+        # if here, no diagonal wins detected
+        return False
+
+    def is_winning_move(self, row, column, player, board):
+        """Wrapper function around the horizontal, vertical, and diagonal win functions to check for winning move
+        :param row: integer - row to check for horizontal win
+        :param column: integer - column to check for vertical win
+        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
+        :param board: 2d NumPy array with board states
+        :return: boolean - True if designated player has won, false otherwise
+        """
+        if self.is_horizontal_win(row, player, board) or self.is_vertical_win(column, player, board) or \
+                self.is_diagonal_win(player, board):
+            return True
+        else:
+            return False
+
     def generate_tree(self, parent_node, current_player, max_depth):
         """
         Generates the game tree based on the starting state and the next player. Assumes tree has a single root node
@@ -128,11 +226,8 @@ class Agent:
         :return: None
         """
 
-        # TODO this needs stop going deeper on a branch if there has been a winning move already
-        # VERY IMPORTANT ^^^
-
         # check depth
-        if self.tree.depth(parent_node) == max_depth:
+        if self.tree.depth(parent_node) == max_depth or self.tree.get_node(parent_node).data.win is True:
             return
         # avoid unnecessary get_node function calls
         parent_state = self.tree.get_node(parent_node).data
@@ -155,207 +250,79 @@ class Agent:
         for i in range(n_new_states):
             self.generate_tree(children[i].identifier, next_player, max_depth)
 
-    def streak_accounting(self, prev_piece, this_piece, player, opponent, streaks_overall, current_streak):
-        """
-        Helper method called by evaluate. Used just to eliminate repeated code
+    def evaluate_chunk(self, chunk, player):
+        # each chunk is size n_to_win, so positions worth giving a score to, from best to worst are
+        # player has all n_to_win spots in this chunk
+        # player has n_to_win - 1 spots in this chunk but the remaining spot is open
+        # player has n_to_win - 2 spots in this chunk but the remaining two spots are open
+        # opponent has n_to_win - 2 spots in this chunk but the remaining two spots are open
+        # opponent has n_to_win - 1 spots in this chunk but the remaining spot is open
+        # opponent has all n_to_win spots in this chunk
 
-        :param prev_piece: integer - previous piece found
-        :param this_piece: integer - most recent piece found
-        :param player: integer - 1 or 2, designates which player is which
-        :param opponent: integer - 1 or 2, designates which player is which
-        :param streaks_overall: dictionary keeping track of overall streak occurrences for each player
-        :param current_streak: dictionary keeping track of current streak for each player
-        :return:
-        """
-        # 3 possibilities (to consider programmatically) each time another piece is evaluated
-        # 1 - the piece doesn't belong to either player (empty spot)
-        # 2 - the piece belongs to the same player as the last piece seen
-        # 3 - the piece belongs to the other player as compared to the last piece seen
-
-        # avoid OOB indexing
-        current_streak[player] = min(current_streak[player], self.n_to_win)
-        current_streak[opponent] = min(current_streak[opponent], self.n_to_win)
-        if this_piece == 0:  # situation 1
-            streaks_overall[player][current_streak[player]] += 1
-            streaks_overall[opponent][current_streak[opponent]] += 1
-            current_streak[player] = 0
-            current_streak[opponent] = 0
-        elif this_piece == prev_piece:  # situation 2
-            current_streak[this_piece] += 1
-        else:  # situation 3
-            if prev_piece != 0:
-                streaks_overall[prev_piece][current_streak[prev_piece]] += 1
-                current_streak[prev_piece] = 0
-
-            current_streak[this_piece] += 1
-
-    def streak_cleanup(self, player, opponent, streaks_overall, current_streak):
-        """
-        Helper method called by evaluate. Used just to eliminate repeated code
-
-        :param player: integer - 1 or 2, designates which player is which
-        :param opponent: integer - 1 or 2, designates which player is which
-        :param streaks_overall: dictionary keeping track of overall streak occurrences for each player
-        :param current_streak: dictionary keeping track of current streak for each player
-        :return:
-        """
-
-        current_streak[player] = min(current_streak[player], self.n_to_win)
-        current_streak[opponent] = min(current_streak[opponent], self.n_to_win)
-        streaks_overall[player][current_streak[player]] += 1
-        streaks_overall[opponent][current_streak[opponent]] += 1
-        current_streak[player] = 0
-        current_streak[opponent] = 0
-
-    def evaluate(self, board, player):
-        """
-        Function used to evaluate a position. Only called on leaf nodes during minimax algorithm
-
-        :param board: 2D NumPy array of occupied positions on the board
-        :param player: integer - 1 or 2, used to differentiate between player and opponent
-        :return:
-        """
-        # will evaluate similar to way that the connect4 game checks for a winner
-        # ie need to check the horizontal, vertical, and diagonal (top down and bottom up) directions for each
-        # direction, will count max consecutive pieces for each player
-        # points will be awarded to a player if they have consecutive pieces, and points will be taken away from them
-        # if their opponent has consecutive pieces
-
-        # these dictionaries will contain the number of consecutive streaks of pieces of each size each player has
-        # so the key : value will be {size of streak : number of streaks of that size}
-        # both the key and the value will be integers
-        # dictionary 1 is for player 1, dictionary 2 is for player 2
-        streaks_overall = {1: {}, 2: {}}
-        # initialize these dictionaries. Note that the 0 key is only there for programmatic convenience later and is not
-        # used in score calculation
-        for i in range(0, self.n_to_win + 1):
-            streaks_overall[1][i] = 0
-            streaks_overall[2][i] = 0
-
-        # make another dictionary for easily keeping track of individual streaks
-        current_streak = {1: 0, 2: 0}
-
+        # convert the ndarray to a list because the list class actually has better methods
+        # for counting occurrences of specific values. It could be done in numpy but it would
+        # be much less readable and we're not doing math so it seems acceptable
+        chunk_list = chunk.tolist()
+        score_this_chunk = 0
         if player == 1:
             opponent = 2
         else:
             opponent = 1
 
-        # perform evaluation in horizontal direction
+        if chunk_list.count(player) == self.n_to_win:
+            score_this_chunk += 100
+        elif chunk_list.count(player) == self.n_to_win - 1 and chunk_list.count(0) == 1:
+            score_this_chunk += 5
+        elif chunk_list.count(player) == self.n_to_win - 2 and chunk_list.count(0) == 2:
+            score_this_chunk += 2
+        elif chunk_list.count(opponent) == self.n_to_win - 2 and chunk_list.count(0) == 2:
+            score_this_chunk -= 2
+        elif chunk_list.count(opponent) == self.n_to_win - 1 and chunk_list.count(0) == 1:
+            score_this_chunk -= 5
+        elif chunk_list.count(opponent) == self.n_to_win:
+            score_this_chunk -= 100
+
+        return score_this_chunk
+
+    def evaluate(self, board, player):
+        # for every row, score n_to_win positions at a time
+        # previous eval fx did not take into account whether or not is was possible get a sufficient streak
+        # from any given streak of 2 or 3 (ie scored the same even if the pieces were blocked from winning on both
+        # sides)
+        # this method will now look at each n_to_win sized position and tally a score considering
+        # both players' positions as well as open positions
+
+        score = 0
+        # center = board[:, self.board_n_cols//2].tolist()
+        # score += center.count(player) * 2
+
+        # evaluate in the horizontal direction
         for row in range(self.board_n_rows):
+            for column in range(self.board_n_cols - self.n_to_win + 1):  # note indexing stops with space to check
+                chunk = board[row, column:column + self.n_to_win]
+                score += self.evaluate_chunk(chunk, player)
 
-            # look at the first piece in each row
-            prev_piece = board[row, 0]
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
+        # evaluate in the vertical direction
+        for column in range(self.board_n_cols):
+            for row in range(self.board_n_rows - self.n_to_win + 1):  # note indexing again
+                chunk = board[row:row + self.n_to_win, column]
+                score += self.evaluate_chunk(chunk, player)
 
-            for col in range(1, self.board_n_cols):
-                this_piece = board[row, col]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
+        # top down diagonals
+        for row in range(self.board_n_rows - self.n_to_win + 1):
+            for column in range(self.board_n_cols - self.n_to_win + 1):
+                chunk = np.array([board[row, column], board[row + 1, column + 1], board[row + 2, column + 2],
+                                  board[row + 3, column + 3]])
+                score += self.evaluate_chunk(chunk, player)
 
-            # must account for whatever streak was in progress when each row ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
+        # bottom up diagonals
+        for row in range(self.board_n_rows - 1, self.n_to_win + 2, -1):
+            for column in range(self.board_n_cols - self.n_to_win + 1):
+                chunk = np.array([board[row, column], board[row - 1, column + 1], board[row - 2, column + 2],
+                                  board[row - 3, column + 3]])
+                score += self.evaluate_chunk(chunk, player)
 
-        # perform evaluation in vertical direction
-        for col in range(self.board_n_cols):
-            prev_piece = board[0, col]
-
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
-
-            for row in range(1, self.board_n_rows):
-                this_piece = board[row, col]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
-
-            # must account for whatever streak was in progress when each column ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
-
-        # perform evaluation in top down diagonal direction by first walking up the left side of the board,
-        # then walking across the top of the board
-        for row in range(self.board_n_rows-2, -1, -1):  # for each top down diagonal starting at left side of board
-            c = 1
-            r = row + 1
-
-            prev_piece = board[row, 0]
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
-            while r < self.board_n_rows and c < self.board_n_cols:
-                this_piece = board[r, c]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
-
-                r += 1
-                c += 1
-
-            # must account for whatever streak was in progress when each diagonal ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
-
-        # keep performing evaluation in top down diagonals, walking across top of board
-        for col in range(1, self.board_n_cols - 2):
-            r = 1
-            c = col + 1
-
-            prev_piece = board[0, col]
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
-            while r < self.board_n_rows and c < self.board_n_cols:
-                this_piece = board[r, c]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
-
-                r += 1
-                c += 1
-
-            # must account for whatever streak was in progress when each diagonal ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
-
-        # perform evaluation in bottom up diagonal direction by first walking up the right side of the board,
-        # then walking left across the top of the board
-        for row in range(self.board_n_rows - 2, -1, -1):  # for each top down diagonal starting at left side of board
-            c = self.board_n_cols - 2  # 2nd to last column
-            r = row + 1
-
-            prev_piece = board[row, self.board_n_cols-1]
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
-            while r < self.board_n_rows and c > 0:
-                this_piece = board[r, c]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
-
-                r += 1
-                c -= 1
-
-            # must account for whatever streak was in progress when each diagonal ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
-
-        # keep performing evaluation in bottom up diagonals, walking left across top of board
-        for col in range(self.board_n_cols - 2, 0, -1):
-            r = 1
-            c = col - 1
-
-            prev_piece = board[0, col]
-            if prev_piece != 0:
-                current_streak[prev_piece] += 1
-            while r < self.board_n_rows and c > 0:
-                this_piece = board[r, c]
-                self.streak_accounting(prev_piece, this_piece, player, opponent, streaks_overall, current_streak)
-                prev_piece = this_piece
-
-                r += 1
-                c -= 1
-
-            # must account for whatever streak was in progress when each diagonal ended
-            self.streak_cleanup(player, opponent, streaks_overall, current_streak)
-
-        # NOTE would have to manually rewrite scoring piece if n_to_win doesn't equal 4
-        score_player = 5 * streaks_overall[player][2] + 25 * streaks_overall[player][3] + \
-            125 * streaks_overall[player][4]**4
-        score_opponent = 5 * streaks_overall[opponent][2] + \
-            25 * streaks_overall[opponent][3]**2 + 125 * streaks_overall[opponent][4]**3
-        score_total = score_player - score_opponent
-        return score_total
+        return score
 
     def minimax(self, current_node_nid):
         current_node_object = self.tree.get_node(current_node_nid)
@@ -408,4 +375,6 @@ class Agent:
         value, child = self.minimax("root")
         root_children = self.tree.children("root")
         move = root_children[child].data.move
+        print("Player ", self.player, "'s move = column ", move[1], "    value = ", value, sep='')
+        print()
         return move

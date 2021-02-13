@@ -260,6 +260,7 @@ class Connect4:
             if self.n_positions_remaining == 0:
                 banner_text = font.render("Draw - No Winners Here", 1, self.blue)
                 screen.blit(banner_text, (25, 25))
+                pygame.display.update()
                 break
 
             if player == 1:
@@ -320,7 +321,7 @@ class Connect4:
                     if player == 1:
                         r_c = agent1.ai_move(self.board, self.n_positions_remaining)
                     else:  # player = 2
-                        r_c = agent1.ai_move(self.board, self.n_positions_remaining)
+                        r_c = agent2.ai_move(self.board, self.n_positions_remaining)
                 else:
                     r_c = ai_opponent.ai_move(self.board, self.n_positions_remaining)
                 row = r_c[0]
@@ -348,7 +349,7 @@ class Connect4:
                 self.render_gui(screen)
 
         # when the game is over, delay before closing the screen, then exit
-        pygame.time.wait(5000)
+        pygame.time.wait(10000)
 
 
 game = Connect4(ai_agent=3)
