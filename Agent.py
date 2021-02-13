@@ -354,8 +354,8 @@ class Agent:
         # negative value for all of the opponent pieces
         score_player = 5 * streaks_overall[player][2] + 25 * streaks_overall[player][3] + \
             125 * streaks_overall[player][4]
-        score_opponent = 5 * streaks_overall[opponent][2] + \
-            50 * streaks_overall[opponent][3] + 200 * streaks_overall[opponent][4]
+        score_opponent = 10 * streaks_overall[opponent][2] + \
+            50 * streaks_overall[opponent][3] + 250 * streaks_overall[opponent][4]
         score_total = score_player - score_opponent
         return score_total
 
@@ -391,7 +391,7 @@ class Agent:
             del self.tree
 
         # set the max depth of the tree
-        depth_limit = 5
+        depth_limit = 4
 
         self.set_agent_state(board_state, n_pos_open)
         self.tree = Tree()

@@ -1,6 +1,7 @@
 import numpy as np
 import Agent
 import pygame
+import sys
 
 
 class Connect4:
@@ -239,58 +240,97 @@ class Connect4:
         Plays Connect4 via the terminal
         :return: None
         """
-
+        pygame.init()
+        player = 1
+        ai_opponent = Agent.Agent(self.ai_agent)
         running = True
         self.draw_board()
         screen = pygame.display.set_mode(self.screen_size)
-        self.render_gui(screen)
+        screen.fill(self.gray)  # screen defaults to black, fill it in with gray
+        self.render_gui(screen)  # initialize gui with all empty positions
+        pygame.display.update()
+        font = pygame.font.SysFont('calibri', 50)
 
-        player = 1
-        ai_opponent = Agent.Agent(self.ai_agent)
-        # TODO - check to see if either player is an AI agent. If so, instantiate agent(s) here
-
-        while True:
-            self.draw_board()
-            if self.n_positions_remaining == 0:
-                print('No moves remaining. The game has ended in a draw.')
-                break
-            print("Player ", player, "'s turn.", sep='')
-            if self.ai_agent != 3 and player != self.ai_agent:
-                column = int(input('Enter column: '))
-                row = self.get_row(column)
-                if row != -1:  # if row, column are valid
-                    self.execute_move(row, column, player)
-                else:
-                    print("Invalid selection")
-                    continue
+        while running:
+            if player == 1:
+                color = self.red
             else:
-                auto_move = ai_opponent.ai_move(self.board, self.n_positions_remaining)
-                row = auto_move[0]
-                column = auto_move[1]
-                print("Computer chose column", column)
-                self.execute_move(row, column, self.ai_agent)  # TODO fix hard code
+                color = self.yellow
 
-            if self.is_winning_move(row, column, player):
-                print("Player", player, "wins!")
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+
+                if event.type == pygame.MOUSEMOTION:
+                    pygame.draw.rect(screen, self.gray, (0, 0, self.screen_width, self.grid_size))  # gray out banner
+                    x_pos_mouse_ptr = event.pos[0]
+                    if self.ai_agent != 3 and player != self.ai_agent:
+                        pygame.draw.circle(screen, color, (x_pos_mouse_ptr, self.grid_size // 2), self.gamepiece_radius)
+
+                pygame.display.update()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pygame.draw.rect(screen, self.gray, (0, 0, self.screen_width, self.grid_size))  # gray out banner
+
+                    # if there is at least one human player and it is currently the human player's turn
+                    if self.ai_agent != 3 and player != self.ai_agent:
+                        x_pos_mouse_ptr = event.pos[0]
+                        column = x_pos_mouse_ptr // self.grid_size  # integer division
+                        row = self.get_row(column)
+
+                        if row == -1:  # if invalid move
+                            break
+                        else:
+                            self.execute_move(row, column, player)
+
+                        if self.is_winning_move(row, column, player):
+
+                            # if there is an agent playing, mock them for losing, even though they don't feel anything
+                            if self.ai_agent != 0:
+                                banner_text = font.render("Down with the machines!", 1, color)
+                            else:  # if not ai agent, print standard message
+                                message = "Player " + str(player) + " is the winner!"
+                                banner_text = font.render(message, 1, color)
+                            screen.blit(banner_text, (25, 25))
+                            running = False
+                        else:
+                            # swap the players if no winner yet
+                            if player == 1:
+                                player = 2
+                            else:
+                                player = 1
+
+                        self.draw_board()
+                        self.render_gui(screen)
+
+            # note that this is outside the event loop, but still in the while running loop
+            if self.ai_agent == 3 or self.ai_agent == player:
+                r_c = ai_opponent.ai_move(self.board, self.n_positions_remaining)
+                row = r_c[0]
+                column = r_c[1]
+                self.execute_move(row, column, player)
+
+                if self.is_winning_move(row, column, player):
+
+                    # if there is a human player, mock them
+                    if self.ai_agent != 3:
+                        banner_text = font.render("The machines have risen!", 1, color)
+                    else:
+                        message = "Agent " + str(player) + " is the winner!"
+
+                    screen.blit(banner_text, (25, 25))
+                    running = False
+                else:
+                    if player == 1:
+                        player = 2
+                    else:
+                        player = 1
+
                 self.draw_board()
-                break
-            else:
-                if player == 1:
-                    player = 2
-                else:
-                    player = 1
+                self.render_gui(screen)
 
+        # when the game is over, delay before closing the screen, then exit
+        pygame.time.wait(5000)
 
-game = Connect4(ai_agent=2)
+game = Connect4(ai_agent=1)
 game.play()
-
-"""
-psuedo code for play
-init and draw game
-
-while game running
-    get event
-    
-    if mouse moving event
-        
-"""
