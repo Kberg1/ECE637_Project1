@@ -1,5 +1,6 @@
 import numpy as np
 import Agent
+import pygame
 
 
 class Connect4:
@@ -14,7 +15,14 @@ class Connect4:
     n_to_win: integer - number of consecutive pieces necessary to win. Defaults to 4. See warning in is_diagonal_win
     n_positions_remaining: integer - number of open positions remaining on the board
     ai_agent: integer - 0 -> no AI agent, 1 -> Player 1 is an agent, 2 -> Player 2 is an agent, 3 -> Both are agents
+    colors: (int, int, int) - tuples representing color rgb values
+    grid_size: integer - size of each grid of the GUI. Should be divisible by 10 for easy mental math
+    screen_width: integer - width of GUI
+    screen_height: integer - height of GUI
+    screen_size: (int, int) - tuple with (screen_width, screen_size) here for convenience with pygame fx calls
+    gamepiece_radius: integer - radius of the circular playing pieces
     """
+
     def __init__(self, n_rows=6, n_cols=7, n_to_win=4, ai_agent=0):
         """
         Generate an empty connect4 board with n_rows and n_cols. Sets attributes.
@@ -30,6 +38,15 @@ class Connect4:
         self.n_to_win = n_to_win
         self.n_positions_remaining = n_rows * n_cols
         self.ai_agent = ai_agent
+        self.blue = (30, 14, 213)
+        self.gray = (169, 169, 169)
+        self.red = (255, 0, 0)
+        self.yellow = (255, 239, 0)
+        self.grid_size = 100  # size of each grid box, 100 chosen for easy mental math
+        self.screen_width = self.grid_size * self.n_cols
+        self.screen_height = self.grid_size * (self.n_rows + 1)
+        self.screen_size = (self.screen_width, self.screen_height)
+        self.gamepiece_radius = int(0.4 * self.grid_size)
 
     def is_valid_move(self, row, col):
         """
@@ -150,19 +167,61 @@ class Connect4:
         :return: None
         """
         for row in range(self.n_rows):
-            print(row, '>', end=' ')
             for column in range(self.n_cols):
                 print(self.board[row, column], end=' ')
             print()
 
-        print('   ', end=' ')
         for column in range(self.n_cols):
             print('^', end=' ')
         print()
-        print('   ', end=' ')
         for column in range(self.n_cols):
             print(column, end=' ')
         print()
+
+    def render_gui(self, screen):
+        """
+        Renders the GUI after an event
+
+        :param screen: pygame surface object representing the GUI screen
+        :return: None
+        """
+        # go grid by grid, first filling the grid blue, then drawing the correct colored circle to indicate open,
+        # player 1, or player 2
+        # must be done this way to avoid drawing over the top banner where we want the player to be able to move their
+        # piece back and forth and see the movement in real time
+
+        for column in range(self.n_cols):
+            for row in range(self.n_rows):
+                pygame.draw.rect(screen, self.blue, (column * self.grid_size, (row + 1) * self.grid_size,
+                                                     self.grid_size, self.grid_size))
+                if self.board[row, column] == 0:
+                    pygame.draw.circle(screen, self.gray, ((column + 1) * self.grid_size - self.grid_size / 2,
+                                                           (row + 2) * self.grid_size - self.grid_size / 2),
+                                       self.gamepiece_radius)
+                elif self.board[row, column] == 1:
+                    pygame.draw.circle(screen, self.red, ((column + 1) * self.grid_size - self.grid_size / 2,
+                                                           (row + 2) * self.grid_size - self.grid_size / 2),
+                                       self.gamepiece_radius)
+                else:  # piece belongs to player 2
+                    pygame.draw.circle(screen, self.yellow, ((column + 1) * self.grid_size - self.grid_size / 2,
+                                                           (row + 2) * self.grid_size - self.grid_size / 2),
+                                       self.gamepiece_radius)
+
+        pygame.display.update()
+
+    def get_row(self, column):
+        """
+        Finds the bottom most open row in a given column, or returns -1 if the column is full
+        :param column: column selected by player or agent
+        :return: bottom most open row if a position in the requested column is available, -1 otherwise
+        """
+        rv = -1
+        for row in range(self.n_rows - 1, -1, -1):  # search bottom to top
+            if self.is_valid_move(row, column):
+                rv = row
+                break
+
+        return rv
 
     def execute_move(self, row, column, player):
         """
@@ -181,6 +240,11 @@ class Connect4:
         :return: None
         """
 
+        running = True
+        self.draw_board()
+        screen = pygame.display.set_mode(self.screen_size)
+        self.render_gui(screen)
+
         player = 1
         ai_opponent = Agent.Agent(self.ai_agent)
         # TODO - check to see if either player is an AI agent. If so, instantiate agent(s) here
@@ -192,9 +256,9 @@ class Connect4:
                 break
             print("Player ", player, "'s turn.", sep='')
             if self.ai_agent != 3 and player != self.ai_agent:
-                row = int(input('Enter row: '))
                 column = int(input('Enter column: '))
-                if self.is_valid_move(row, column):
+                row = self.get_row(column)
+                if row != -1:  # if row, column are valid
                     self.execute_move(row, column, player)
                 else:
                     print("Invalid selection")
@@ -203,7 +267,7 @@ class Connect4:
                 auto_move = ai_opponent.ai_move(self.board, self.n_positions_remaining)
                 row = auto_move[0]
                 column = auto_move[1]
-                print("Computer chose", auto_move)
+                print("Computer chose column", column)
                 self.execute_move(row, column, self.ai_agent)  # TODO fix hard code
 
             if self.is_winning_move(row, column, player):
@@ -219,3 +283,14 @@ class Connect4:
 
 game = Connect4(ai_agent=2)
 game.play()
+
+"""
+psuedo code for play
+init and draw game
+
+while game running
+    get event
+    
+    if mouse moving event
+        
+"""
