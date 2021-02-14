@@ -349,7 +349,7 @@ class Connect4:
                 self.render_gui(screen)
 
         # when the game is over, delay before closing the screen, then exit
-        pygame.time.wait(10000)
+        pygame.time.wait(3000)
 
 
 game = Connect4(ai_agent=3)
