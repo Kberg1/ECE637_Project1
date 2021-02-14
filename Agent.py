@@ -181,23 +181,14 @@ class Agent:
 
         return score
 
+    def stop_recursion(self, board_state, current_depth):
+        rv = False
+        if not np.any(board_state == 0) or current_depth == 5 or self.is_winning_state(board_state):
+            rv = True
+        return rv
+
     def minimax(self, board_state, current_depth, player, alpha, beta):
-        if np.any(board_state == 0):
-            positions_remaining = True
-        else:
-            positions_remaining = False
-
-        if current_depth == 5:
-            leaf_node = True
-        else:
-            leaf_node = False
-
-        if self.is_winning_state(board_state):
-            winner_present = True
-        else:
-            winner_present = False
-
-        if positions_remaining is False or leaf_node is True or winner_present is True:
+        if self.stop_recursion(board_state, current_depth) is True:
             score = self.evaluate(board_state, self.player)
             return score, -1  # -1 is just a throwaway value
 
@@ -216,8 +207,6 @@ class Agent:
 
         for col in range(self.n_cols_board):
             row = self.is_valid_move(col, board_state)
-            column_list = []
-            score_list = []
             if row is None:
                 continue
             else:
@@ -229,31 +218,35 @@ class Agent:
 
                 if is_min_node:
                     beta_initial = np.inf
-                    if score < beta_initial:
-                        beta_initial = score
+                    beta_initial = min(beta_initial, score)
                     beta = min(beta_initial, beta)
                     if beta <= alpha:
                         break
                 else:  # is max node
                     alpha_initial = -np.inf
-                    if score > alpha_initial:
-                        alpha_initial = score
+                    alpha_initial = max(alpha_initial, score)
                     alpha = max(alpha_initial, alpha)
                     if alpha >= beta:
                         break
 
-        # check for repeat scores
-        if is_min_node:
-            score = min(score_list)
+        # ensure at least one child had a valid move, if not, just return the evaluation of this node
+        # perhaps this could be included in the stop_recursion check for better readability
+        if len(score_list) == 0:
+            score = self.evaluate(board_state, self.player)
+            return score, -1  # -1 is just a throwaway value
         else:
-            score = max(score_list)
-        repeats = [score_list[i] for i in range(len(score_list)) if score_list[i] == score]
-        if len(repeats) > 1:
-            repeat_indices = [i for i in range(len(score_list)) if score_list[i] == score]
-            score_idx = np.random.choice(repeat_indices)
-            best_column = column_list[score_idx]
-        else:
-            score_idx = score_list.index(score)
-            best_column = column_list[score_idx]
+            # check for repeat scores
+            if is_min_node:
+                score = min(score_list)
+            else:
+                score = max(score_list)
+            repeats = [score_list[i] for i in range(len(score_list)) if score_list[i] == score]
+            if len(repeats) > 1:
+                repeat_indices = [i for i in range(len(score_list)) if score_list[i] == score]
+                score_idx = np.random.choice(repeat_indices)
+                best_column = column_list[score_idx]
+            else:
+                score_idx = score_list.index(score)
+                best_column = column_list[score_idx]
 
-        return score, best_column
+            return score, best_column

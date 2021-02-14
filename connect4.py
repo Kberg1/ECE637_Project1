@@ -202,11 +202,11 @@ class Connect4:
                                        self.gamepiece_radius)
                 elif self.board[row, column] == 1:
                     pygame.draw.circle(screen, self.red, ((column + 1) * self.grid_size - self.grid_size / 2,
-                                                           (row + 2) * self.grid_size - self.grid_size / 2),
+                                                          (row + 2) * self.grid_size - self.grid_size / 2),
                                        self.gamepiece_radius)
                 else:  # piece belongs to player 2
                     pygame.draw.circle(screen, self.yellow, ((column + 1) * self.grid_size - self.grid_size / 2,
-                                                           (row + 2) * self.grid_size - self.grid_size / 2),
+                                                             (row + 2) * self.grid_size - self.grid_size / 2),
                                        self.gamepiece_radius)
 
         pygame.display.update()
@@ -258,7 +258,7 @@ class Connect4:
 
         while running:
             if self.n_positions_remaining == 0:
-                banner_text = font.render("Draw - No Winners Here", 1, self.blue)
+                banner_text = font.render("Draw - No Winners Here", True, self.blue)
                 screen.blit(banner_text, (25, 25))
                 pygame.display.update()
                 break
@@ -298,10 +298,10 @@ class Connect4:
 
                             # if there is an agent playing, mock them for losing, even though they don't feel anything
                             if self.ai_agent != 0:
-                                banner_text = font.render("Down with the machines!", 1, color)
+                                banner_text = font.render("Down with the machines!", True, color)
                             else:  # if not ai agent, print standard message
                                 message = "Player " + str(player) + " is the winner!"
-                                banner_text = font.render(message, 1, color)
+                                banner_text = font.render(message, True, color)
                             screen.blit(banner_text, (25, 25))
                             running = False
                         else:
@@ -333,10 +333,10 @@ class Connect4:
 
                     # if there is a human player, mock them
                     if self.ai_agent != 3:
-                        banner_text = font.render("The machines have risen!", 1, color)
+                        banner_text = font.render("The machines have risen!", True, color)
                     else:
                         message = "Agent " + str(player) + " is the winner!"
-                        banner_text = font.render(message, 1, color)
+                        banner_text = font.render(message, True, color)
 
                     screen.blit(banner_text, (25, 25))
                     running = False
