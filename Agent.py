@@ -1,40 +1,4 @@
 import numpy as np
-from treelib import Tree
-
-
-class State:
-    """
-    Object describing the game's state
-
-    Attributes
-    ------------
-    positions : 2D NumPy array showing status of each board position
-    n_pos_open : integer - number of board positions which have not yet been occupied
-    move : tuple (integer, integer) - row and column of the move that this state was generated with
-    """
-
-    def __init__(self, current_player, prev_state=None, row=None, column=None, n_rows=6, n_cols=7):
-        if prev_state is None:
-            self.positions = np.zeros((n_rows, n_cols), dtype=int)
-            self.n_pos_open = n_rows * n_cols
-        else:
-            self.positions = np.copy(prev_state.positions)
-            self.positions[row, column] = current_player
-            self.move = (row, column)
-            self.n_pos_open = prev_state.n_pos_open - 1
-        self.win = False
-
-    def set_state(self, board, n_positions_open):
-        """
-        Function which sets current state to that reflected by board and n_positions_open
-
-        :param board: 2D NumPy array showing status of each board position
-        :param n_positions_open: integer - number of board positions which have not yet been occupied
-        :return: None
-        """
-
-        self.positions = np.copy(board)
-        self.n_pos_open = n_positions_open
 
 
 class Agent:
@@ -44,211 +8,104 @@ class Agent:
     Attributes
     ------------
     player: integer - 1 or 2, represents which player the agent is
-    board_n_rows: number of rows in the game's board
-    board_n_cols: number of cols in the game's board
-    current_state: 2D NumPy array - shows actual board status (future possible states would be in the tree)
-    tree: treelib.Tree object - tree which will contain future possible states. Used for decision making.
+    n_rows_board: number of rows in the game's board
+    n_cols_board: number of cols in the game's board
     """
 
-    def __init__(self, ai_player, board_n_rows=6, board_n_cols=7, n_to_win=4):
+    def __init__(self, ai_player, n_rows_board=6, n_cols_board=7, n_to_win=4):
         """
         Initializes an agent
 
         :param ai_player: integer - 1 or 2, represents which player the agent is
-        :param board_n_rows: number of rows in the game's board
-        :param board_n_cols: number of cols in the game's board
+        :param n_rows_board: number of rows in the game's board
+        :param n_cols_board: number of cols in the game's board
         :param n_to_win: number of consecutive pieces required for a win
         """
 
         self.player = ai_player
-        self.board_n_rows = board_n_rows
-        self.board_n_cols = board_n_cols
+        self.n_rows_board = n_rows_board
+        self.n_cols_board = n_cols_board
         self.n_to_win = n_to_win
-        self.current_state = State(ai_player)
-        self.tree = Tree()
 
-    def set_agent_state(self, board_state, n_pos_open):
+    def is_valid_move(self, col, board):
         """
-        Wrapper function for setting an agent state. Calls State.set_state
+        Determine if a move in a given column is valid. Returns None or row
 
-        :param board_state: 2D NumPy array showing status of each board position
-        :param n_pos_open: integer - number of board positions which have not yet been occupied
-        :return: None
-        """
-        self.current_state.set_state(board_state, n_pos_open)
-
-    def gen_states(self, start_state, current_player):
-        """
-        Generates all next possible moves from a given state.
-
-        :param start_state: State object - current state of the game
-        :param current_player: integer - 1 or 2 - IDs which player would be placing pieces in the generated states
-        :return: list of possible next states or None if no new states are possible
-        """
-
-        if start_state.n_pos_open == 0:
-            return None
-        possible_states = []
-
-        for row in range(self.board_n_rows):
-            for col in range(self.board_n_cols):
-                if self.is_valid_move(row, col, start_state.positions):
-                    s = State(current_player, start_state, row, col)
-                    if self.is_winning_move(row, col, current_player, s.positions):
-                        s.win = True
-                    possible_states.append(s)
-        return possible_states
-
-    def is_valid_move(self, row, col, board_positions):
-        """
-        Determine if a move at board[row, col] is valid. Returns true or false.
-
-        :param row: integer - requested row
         :param col: integer - requested column
-        :param board_positions - 2D NumPy array showing status of each board position
-        :return: True if move would be valid, False otherwise
+        :param board - 2D NumPy array showing status of each board position
+        :return: row number for correct move if move would be valid, None otherwise
         """
-        # must check several items
-        # 1 - is the move in the board boundary?
-        # 2 - is the position unoccupied?
-        # 3 - is the position in the bottom row or does it have a piece beneath it if not in the bottom row
-        if row < 0 or col < 0 or row >= self.board_n_rows or col >= self.board_n_cols:
-            return False
-        elif board_positions[row, col] != 0:
-            return False
-        elif row < (self.board_n_rows - 1) and board_positions[row + 1, col] == 0:
-            return False
+        rv = None
+        for row in range(self.n_rows_board - 1, -1, -1):  # note that row 5 is the bottom row
+            if board[row, col] == 0:
+                rv = row
+                break
+        return rv
+
+    def check_segment_for_winner(self, segment):
+        """
+        Checks a given segment of n_to_win size pieces for a win by either player
+
+        :param segment: 1d NumPy array representing the game pieces on a particular board segment
+        :return: True if player won, False otherwise
+        """
+
+        # convert the ndarray to a list because the list class actually has better methods
+        # for counting occurrences of specific values. It could be done in numpy but it would
+        # be much less readable and we're not doing math so it seems acceptable
+        segment_list = segment.tolist()
+
+        if segment_list.count(1) == self.n_to_win or segment_list.count(2) == self.n_to_win:
+            rv = True
         else:
-            return True
+            rv = False
 
-    def is_horizontal_win(self, row, player, board):
+        return rv
+
+    def is_winning_state(self, board):
         """
-        Checks if a move in a given row results in a win in the horizontal direction
+        Check a given board state for a win by either player
 
-        :param row: integer - row to check for horizontal win
-        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
-        :param board: 2d NumPy array with board states
-        :return: boolean - True if designated player has won, False otherwise
-        """
-        n_consecutive_pieces = 0
-        for column in range(self.board_n_cols):
-            if board[row, column] == player:
-                n_consecutive_pieces += 1
-                if n_consecutive_pieces == self.n_to_win:
-                    break
-            else:
-                n_consecutive_pieces = 0
-
-        if n_consecutive_pieces == self.n_to_win:
-            return True
-        else:
-            return False
-
-    def is_vertical_win(self, column, player, board):
-        """
-        Checks if a move in a given column results in a win in the vertical direction
-
-        :param column: integer - column to check for vertical win
-        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
-        :param board: 2d NumPy array with board states
-        :return: boolean - True if designated player has won, False otherwise
+        :param board: 2d NumPy array representing the board
+        :return: True if player has won, False otherwise
         """
 
-        n_consecutive_pieces = 0
-        for row in range(self.board_n_rows):
-            if board[row, column] == player:
-                n_consecutive_pieces += 1
-                if n_consecutive_pieces == self.n_to_win:
-                    break
-            else:
-                n_consecutive_pieces = 0
-
-        if n_consecutive_pieces >= self.n_to_win:
-            return True
-        else:
-            return False
-
-    def is_diagonal_win(self, player, board):
-        """
-        Brute force check to see if the most recent move results in a win in the diagonal direction
-
-        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
-        :param board: 2d NumPy array with board states
-        :return: boolean - True if designated player has won, False otherwise
-        """
-
-        # VERY IMPORTANT
-        # NOTE that if self.n_to_win != 4, the hardcoded checks below must also be changed
-        # I couldn't figure out how to do this other than the unfortunate hardcode
-
-        # There is only one way to win diagonally, but two ways to consider it programmatically
-        # 1 - top down - start on the top left side of the board, move down and right checking pieces along the way
-        # 2 - bottom up - start on the left bottom side of the board, move up and right checking pieces along the way
-
-        # top down. recall that the top left position is [0,0]
-        for column in range(self.board_n_cols - self.n_to_win + 1):
-            for row in range(self.board_n_rows - self.n_to_win + 1):
-                if board[row, column] == board[row + 1, column + 1] == board[row + 2, column + 2] == \
-                        board[row + 3, column + 3] == player:
+        # evaluate in the horizontal direction
+        for row in range(self.n_rows_board):
+            for column in range(self.n_cols_board - self.n_to_win + 1):  # note indexing stops with space to check
+                segment = board[row, column:column + self.n_to_win]
+                win_occurred = self.check_segment_for_winner(segment)
+                if win_occurred:
                     return True
 
-        # bottom up. recall that the bottom left position is [n_rows-1, 0]
-        for column in range(self.board_n_cols - self.n_to_win + 1):
-            for row in range(self.board_n_rows - self.n_to_win + 1, self.board_n_rows):
-                if board[row, column] == board[row - 1, column + 1] == board[row - 2, column + 2] == \
-                        board[row - 3, column + 3] == player:
+        # evaluate in the vertical direction
+        for column in range(self.n_cols_board):
+            for row in range(self.n_rows_board - self.n_to_win + 1):  # note indexing again
+                segment = board[row:row + self.n_to_win, column]
+                win_occurred = self.check_segment_for_winner(segment)
+                if win_occurred:
                     return True
 
-        # if here, no diagonal wins detected
+        # top down diagonals
+        for row in range(self.n_rows_board - self.n_to_win + 1):
+            for column in range(self.n_cols_board - self.n_to_win + 1):
+                segment = np.array([board[row, column], board[row + 1, column + 1], board[row + 2, column + 2],
+                                    board[row + 3, column + 3]])
+                win_occurred = self.check_segment_for_winner(segment)
+                if win_occurred:
+                    return True
+
+        # bottom up diagonals
+        for row in range(self.n_rows_board - 1, self.n_to_win + 2, -1):
+            for column in range(self.n_cols_board - self.n_to_win + 1):
+                segment = np.array([board[row, column], board[row - 1, column + 1], board[row - 2, column + 2],
+                                    board[row - 3, column + 3]])
+                win_occurred = self.check_segment_for_winner(segment)
+                if win_occurred:
+                    return True
+
+        # if here no win has occurred
         return False
-
-    def is_winning_move(self, row, column, player, board):
-        """Wrapper function around the horizontal, vertical, and diagonal win functions to check for winning move
-        :param row: integer - row to check for horizontal win
-        :param column: integer - column to check for vertical win
-        :param player: integer - 1 or 2 representing player 1 or player 2 respectively
-        :param board: 2d NumPy array with board states
-        :return: boolean - True if designated player has won, false otherwise
-        """
-        if self.is_horizontal_win(row, player, board) or self.is_vertical_win(column, player, board) or \
-                self.is_diagonal_win(player, board):
-            return True
-        else:
-            return False
-
-    def generate_tree(self, parent_node, current_player, max_depth):
-        """
-        Generates the game tree based on the starting state and the next player. Assumes tree has a single root node
-
-        :param parent_node: treelib.Node object - nid of node containing state to branch from
-        :param current_player: integer - 1 or 2 representing player 1 or player 2 respectively
-        :param max_depth: integer - max depth of tree
-        :return: None
-        """
-
-        # check depth
-        if self.tree.depth(parent_node) == max_depth or self.tree.get_node(parent_node).data.win is True:
-            return
-        # avoid unnecessary get_node function calls
-        parent_state = self.tree.get_node(parent_node).data
-        # generate every possible next state from the current state
-        new_states = self.gen_states(parent_state, current_player)
-        if new_states is None:
-            return
-        else:
-            n_new_states = len(new_states)
-        # create a new node for every possible new state and add it as a child of the parent node
-        for i in range(n_new_states):
-            self.tree.create_node(parent=parent_node, data=new_states[i])
-        # generate next mark
-        if current_player == 1:
-            next_player = 2
-        else:
-            next_player = 1
-        # call this function on all of the nodes just created
-        children = self.tree.children(parent_node)
-        for i in range(n_new_states):
-            self.generate_tree(children[i].identifier, next_player, max_depth)
 
     def evaluate_chunk(self, chunk, player):
         # each chunk is size n_to_win, so positions worth giving a score to, from best to worst are
@@ -297,84 +154,106 @@ class Agent:
         # score += center.count(player) * 2
 
         # evaluate in the horizontal direction
-        for row in range(self.board_n_rows):
-            for column in range(self.board_n_cols - self.n_to_win + 1):  # note indexing stops with space to check
+        for row in range(self.n_rows_board):
+            for column in range(self.n_cols_board - self.n_to_win + 1):  # note indexing stops with space to check
                 chunk = board[row, column:column + self.n_to_win]
                 score += self.evaluate_chunk(chunk, player)
 
         # evaluate in the vertical direction
-        for column in range(self.board_n_cols):
-            for row in range(self.board_n_rows - self.n_to_win + 1):  # note indexing again
+        for column in range(self.n_cols_board):
+            for row in range(self.n_rows_board - self.n_to_win + 1):  # note indexing again
                 chunk = board[row:row + self.n_to_win, column]
                 score += self.evaluate_chunk(chunk, player)
 
         # top down diagonals
-        for row in range(self.board_n_rows - self.n_to_win + 1):
-            for column in range(self.board_n_cols - self.n_to_win + 1):
+        for row in range(self.n_rows_board - self.n_to_win + 1):
+            for column in range(self.n_cols_board - self.n_to_win + 1):
                 chunk = np.array([board[row, column], board[row + 1, column + 1], board[row + 2, column + 2],
                                   board[row + 3, column + 3]])
                 score += self.evaluate_chunk(chunk, player)
 
         # bottom up diagonals
-        for row in range(self.board_n_rows - 1, self.n_to_win + 2, -1):
-            for column in range(self.board_n_cols - self.n_to_win + 1):
+        for row in range(self.n_rows_board - 1, self.n_to_win + 2, -1):
+            for column in range(self.n_cols_board - self.n_to_win + 1):
                 chunk = np.array([board[row, column], board[row - 1, column + 1], board[row - 2, column + 2],
                                   board[row - 3, column + 3]])
                 score += self.evaluate_chunk(chunk, player)
 
         return score
 
-    def minimax(self, current_node_nid):
-        current_node_object = self.tree.get_node(current_node_nid)
-        if self.tree.depth(current_node_nid) % 2 == 1:
+    def minimax(self, board_state, current_depth, player, alpha, beta):
+        if np.any(board_state == 0):
+            positions_remaining = True
+        else:
+            positions_remaining = False
+
+        if current_depth == 5:
+            leaf_node = True
+        else:
+            leaf_node = False
+
+        if self.is_winning_state(board_state):
+            winner_present = True
+        else:
+            winner_present = False
+
+        if positions_remaining is False or leaf_node is True or winner_present is True:
+            score = self.evaluate(board_state, self.player)
+            return score, -1  # -1 is just a throwaway value
+
+        if current_depth % 2 == 1:
             is_min_node = True
         else:
             is_min_node = False
 
-        if current_node_object.is_leaf():
-            return self.evaluate(current_node_object.data.positions, self.player), -1
+        if player == 1:
+            next_player = 2
         else:
-            children_nids = self.tree.is_branch(current_node_nid)
-            children_vals = []
-            for i in range(len(children_nids)):
-                val, throwaway_idx = self.minimax(children_nids[i])
-                children_vals.append(val)
+            next_player = 1
 
+        column_list = []
+        score_list = []
+
+        for col in range(self.n_cols_board):
+            row = self.is_valid_move(col, board_state)
+            column_list = []
+            score_list = []
+            if row is None:
+                continue
+            else:
+                child_state = np.copy(board_state)
+                child_state[row, col] = player
+                score, throwaway_val = self.minimax(child_state, current_depth + 1, next_player, alpha, beta)
+                column_list.append(col)
+                score_list.append(score)
+
+                if is_min_node:
+                    beta_initial = np.inf
+                    if score < beta_initial:
+                        beta_initial = score
+                    beta = min(beta_initial, beta)
+                    if beta <= alpha:
+                        break
+                else:  # is max node
+                    alpha_initial = -np.inf
+                    if score > alpha_initial:
+                        alpha_initial = score
+                    alpha = max(alpha_initial, alpha)
+                    if alpha >= beta:
+                        break
+
+        # check for repeat scores
         if is_min_node:
-            min_child_val = min(children_vals)
-            repeats = [children_vals[i] for i in range(len(children_vals)) if children_vals[i] == min_child_val]
-            if len(repeats) > 1:
-                repeat_indices = [i for i in range(len(children_vals)) if children_vals[i] == min_child_val]
-                min_child_val_idx = np.random.choice(repeat_indices)
-            else:
-                min_child_val_idx = children_vals.index(min_child_val)
-            return min_child_val, min_child_val_idx
-        else:  # is a max node
-            max_child_val = max(children_vals)
-            repeats = [children_vals[i] for i in range(len(children_vals)) if children_vals[i] == max_child_val]
-            if len(repeats) > 1:
-                repeat_indices = [i for i in range(len(children_vals)) if children_vals[i] == max_child_val]
-                max_child_val_idx = np.random.choice(repeat_indices)
-            else:
-                max_child_val_idx = children_vals.index(max_child_val)
-            return max_child_val, max_child_val_idx
+            score = min(score_list)
+        else:
+            score = max(score_list)
+        repeats = [score_list[i] for i in range(len(score_list)) if score_list[i] == score]
+        if len(repeats) > 1:
+            repeat_indices = [i for i in range(len(score_list)) if score_list[i] == score]
+            score_idx = np.random.choice(repeat_indices)
+            best_column = column_list[score_idx]
+        else:
+            score_idx = score_list.index(score)
+            best_column = column_list[score_idx]
 
-    def ai_move(self, board_state, n_pos_open):
-        # set up for minimax algo run
-        # need to build a tree based on the state passed in, deleting the current tree (if it exists)
-        if self.tree is not None:
-            del self.tree
-
-        # set the max depth of the tree
-        depth_limit = 5
-
-        self.set_agent_state(board_state, n_pos_open)
-        self.tree = Tree()
-        self.tree.create_node("Root", "root", data=self.current_state)
-        self.generate_tree("root", self.player, depth_limit)
-        value, child = self.minimax("root")
-        root_children = self.tree.children("root")
-        move = root_children[child].data.move
-        print("Player ", self.player, "'s move = column ", move[1], "    value = ", value, sep='')
-        print()
-        return move
+        return score, best_column

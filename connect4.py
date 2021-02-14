@@ -319,14 +319,15 @@ class Connect4:
                 # if both players are ai agents
                 if self.ai_agent == 3:
                     if player == 1:
-                        r_c = agent1.ai_move(self.board, self.n_positions_remaining)
+                        score, column = agent1.minimax(self.board, 0, 1, -np.inf, np.inf)
                     else:  # player = 2
-                        r_c = agent2.ai_move(self.board, self.n_positions_remaining)
+                        score, column = agent2.minimax(self.board, 0, 2, -np.inf, np.inf)
                 else:
-                    r_c = ai_opponent.ai_move(self.board, self.n_positions_remaining)
-                row = r_c[0]
-                column = r_c[1]
+                    score, column = ai_opponent.minimax(self.board, 0, self.ai_agent, -np.inf, np.inf)
+                row = self.get_row(column)
                 self.execute_move(row, column, player)
+                print("Player ", player, "'s move = column ", column, "    score = ", score, sep='')
+                print()
 
                 if self.is_winning_move(row, column, player):
 
