@@ -127,7 +127,7 @@ class Agent:
             opponent = 1
 
         if chunk_list.count(player) == self.n_to_win:
-            score_this_chunk += 100
+            score_this_chunk += 200
         elif chunk_list.count(player) == self.n_to_win - 1 and chunk_list.count(0) == 1:
             score_this_chunk += 5
         elif chunk_list.count(player) == self.n_to_win - 2 and chunk_list.count(0) == 2:
@@ -137,7 +137,7 @@ class Agent:
         elif chunk_list.count(opponent) == self.n_to_win - 1 and chunk_list.count(0) == 1:
             score_this_chunk -= 5
         elif chunk_list.count(opponent) == self.n_to_win:
-            score_this_chunk -= 100
+            score_this_chunk -= 200
 
         return score_this_chunk
 
@@ -150,8 +150,6 @@ class Agent:
         # both players' positions as well as open positions
 
         score = 0
-        # center = board[:, self.board_n_cols//2].tolist()
-        # score += center.count(player) * 2
 
         # evaluate in the horizontal direction
         for row in range(self.n_rows_board):
@@ -183,14 +181,14 @@ class Agent:
 
     def stop_recursion(self, board_state, current_depth):
         rv = False
-        if not np.any(board_state == 0) or current_depth == 5 or self.is_winning_state(board_state):
+        if not np.any(board_state == 0) or current_depth == 7 or self.is_winning_state(board_state):
             rv = True
         return rv
 
-    def minimax(self, board_state, current_depth, player, alpha, beta):
+    def minimax(self, board_state, current_depth, player, alpha, beta, n_nodes):
         if self.stop_recursion(board_state, current_depth) is True:
             score = self.evaluate(board_state, self.player)
-            return score, -1  # -1 is just a throwaway value
+            return score, -1, n_nodes + 1  # -1 is just a throwaway value
 
         if current_depth % 2 == 1:
             is_min_node = True
@@ -212,7 +210,8 @@ class Agent:
             else:
                 child_state = np.copy(board_state)
                 child_state[row, col] = player
-                score, throwaway_val = self.minimax(child_state, current_depth + 1, next_player, alpha, beta)
+                score, throwaway_val, n_nodes = self.minimax(child_state, current_depth + 1, next_player, alpha, beta,
+                                                             n_nodes)
                 column_list.append(col)
                 score_list.append(score)
 
@@ -233,7 +232,7 @@ class Agent:
         # perhaps this could be included in the stop_recursion check for better readability
         if len(score_list) == 0:
             score = self.evaluate(board_state, self.player)
-            return score, -1  # -1 is just a throwaway value
+            return score, -1, n_nodes  # -1 is just a throwaway value
         else:
             # check for repeat scores
             if is_min_node:
@@ -249,4 +248,4 @@ class Agent:
                 score_idx = score_list.index(score)
                 best_column = column_list[score_idx]
 
-            return score, best_column
+            return score, best_column, n_nodes

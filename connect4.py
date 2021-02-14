@@ -248,6 +248,8 @@ class Connect4:
             agent2 = Agent.Agent(2)
         else:
             ai_opponent = Agent.Agent(self.ai_agent)
+        n_max_nodes = 0
+        n_nodes = 0
         running = True
         self.draw_board()
         screen = pygame.display.set_mode(self.screen_size)
@@ -319,13 +321,15 @@ class Connect4:
                 # if both players are ai agents
                 if self.ai_agent == 3:
                     if player == 1:
-                        score, column = agent1.minimax(self.board, 0, 1, -np.inf, np.inf)
+                        score, column, n_nodes = agent1.minimax(self.board, 0, 1, -np.inf, np.inf, 0)
                     else:  # player = 2
-                        score, column = agent2.minimax(self.board, 0, 2, -np.inf, np.inf)
+                        score, column, n_nodes = agent2.minimax(self.board, 0, 2, -np.inf, np.inf, 0)
                 else:
-                    score, column = ai_opponent.minimax(self.board, 0, self.ai_agent, -np.inf, np.inf)
+                    score, column, n_nodes = ai_opponent.minimax(self.board, 0, self.ai_agent, -np.inf, np.inf, 0)
+                n_max_nodes = max(n_nodes, n_max_nodes)
                 row = self.get_row(column)
                 self.execute_move(row, column, player)
+                print(n_nodes, "nodes visited")
                 print("Player ", player, "'s move = column ", column, "    score = ", score, sep='')
                 print()
 
@@ -350,6 +354,7 @@ class Connect4:
                 self.render_gui(screen)
 
         # when the game is over, delay before closing the screen, then exit
+        print("Max nodes visited in a turn: ", n_max_nodes)
         pygame.time.wait(3000)
 
 
