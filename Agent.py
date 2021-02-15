@@ -236,10 +236,14 @@ class Agent:
                 if is_min_node:
                     beta = min(score, beta)
                     if beta <= alpha:
+                        if beta == alpha:
+                            score_list[len(score_list) - 1] -= 1
                         break
                 else:  # is max node
                     alpha = max(score, alpha)
                     if alpha >= beta:
+                        if alpha == beta:
+                            score_list[len(score_list) - 1] += 1
                         break
 
         # ensure at least one child had a valid move, if not, just return the evaluation of this node
@@ -256,8 +260,7 @@ class Agent:
             repeats = [score_list[i] for i in range(len(score_list)) if score_list[i] == score]
             if len(repeats) > 1:
                 repeat_indices = [i for i in range(len(score_list)) if score_list[i] == score]
-                # score_idx = np.random.choice(repeat_indices)
-                score_idx = np.min(repeat_indices)
+                score_idx = np.random.choice(repeat_indices)
                 best_column = column_list[score_idx]
             else:
                 score_idx = score_list.index(score)

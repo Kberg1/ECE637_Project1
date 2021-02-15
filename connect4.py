@@ -253,6 +253,7 @@ class Connect4:
         screen = pygame.display.set_mode(self.screen_size)
         screen.fill(self.gray)  # screen defaults to black, fill it in with gray
         self.render_gui(screen)  # initialize gui with all empty positions
+        pygame.display.set_caption("Connect4")
         pygame.display.update()
         font = pygame.font.SysFont('calibri', 50)
         print('Pygame module initialization complete')
@@ -355,7 +356,8 @@ class Connect4:
 
         # when the game is over, delay before closing the screen, then exit
         print("Max nodes visited in a turn: ", n_max_nodes)
-        pygame.time.wait(3000)
+        pygame.time.wait(5000)
+        sys.exit()
 
 
 game = Connect4(ai_agent=2)
