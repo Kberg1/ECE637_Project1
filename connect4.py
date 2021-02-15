@@ -249,14 +249,14 @@ class Connect4:
         else:
             ai_opponent = Agent.Agent(self.ai_agent)
         n_max_nodes = 0
-        n_nodes = 0
         running = True
-        self.draw_board()
         screen = pygame.display.set_mode(self.screen_size)
         screen.fill(self.gray)  # screen defaults to black, fill it in with gray
         self.render_gui(screen)  # initialize gui with all empty positions
         pygame.display.update()
         font = pygame.font.SysFont('calibri', 50)
+        print('Pygame module initialization complete')
+        print()
 
         while running:
             if self.n_positions_remaining == 0:
@@ -329,8 +329,8 @@ class Connect4:
                 n_max_nodes = max(n_nodes, n_max_nodes)
                 row = self.get_row(column)
                 self.execute_move(row, column, player)
-                print(n_nodes, "nodes visited")
                 print("Player ", player, "'s move = column ", column, "    score = ", score, sep='')
+                print(n_nodes, "nodes visited")
                 print()
 
                 if self.is_winning_move(row, column, player):
@@ -358,5 +358,5 @@ class Connect4:
         pygame.time.wait(3000)
 
 
-game = Connect4(ai_agent=3)
+game = Connect4(ai_agent=2)
 game.play()

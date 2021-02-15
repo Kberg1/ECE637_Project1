@@ -42,10 +42,11 @@ class Agent:
                 break
         return rv
 
-    def check_segment_for_winner(self, segment):
+    def check_segment_for_winner(self, segment, player):
         """
-        Checks a given segment of n_to_win size pieces for a win by either player
+        Checks a given segment of n_to_win size pieces for a win by designated player
 
+        :param player: integer - player checking for winning pieces
         :param segment: 1d NumPy array representing the game pieces on a particular board segment
         :return: True if player won, False otherwise
         """
@@ -55,17 +56,17 @@ class Agent:
         # be much less readable and we're not doing math so it seems acceptable
         segment_list = segment.tolist()
 
-        if segment_list.count(1) == self.n_to_win or segment_list.count(2) == self.n_to_win:
+        if segment_list.count(player) == self.n_to_win:
             rv = True
         else:
             rv = False
 
         return rv
 
-    def is_winning_state(self, board):
+    def is_winning_state(self, board, player):
         """
-        Check a given board state for a win by either player
-
+        Check a given board state for a win by designated player
+        :param player: integer - player checking for winning pieces
         :param board: 2d NumPy array representing the board
         :return: True if player has won, False otherwise
         """
@@ -74,7 +75,7 @@ class Agent:
         for row in range(self.n_rows_board):
             for column in range(self.n_cols_board - self.n_to_win + 1):  # note indexing stops with space to check
                 segment = board[row, column:column + self.n_to_win]
-                win_occurred = self.check_segment_for_winner(segment)
+                win_occurred = self.check_segment_for_winner(segment, player)
                 if win_occurred:
                     return True
 
@@ -82,7 +83,7 @@ class Agent:
         for column in range(self.n_cols_board):
             for row in range(self.n_rows_board - self.n_to_win + 1):  # note indexing again
                 segment = board[row:row + self.n_to_win, column]
-                win_occurred = self.check_segment_for_winner(segment)
+                win_occurred = self.check_segment_for_winner(segment, player)
                 if win_occurred:
                     return True
 
@@ -91,16 +92,16 @@ class Agent:
             for column in range(self.n_cols_board - self.n_to_win + 1):
                 segment = np.array([board[row, column], board[row + 1, column + 1], board[row + 2, column + 2],
                                     board[row + 3, column + 3]])
-                win_occurred = self.check_segment_for_winner(segment)
+                win_occurred = self.check_segment_for_winner(segment, player)
                 if win_occurred:
                     return True
 
         # bottom up diagonals
-        for row in range(self.n_rows_board - 1, self.n_to_win + 2, -1):
+        for row in range(self.n_rows_board - 1, self.n_to_win - 2, -1):
             for column in range(self.n_cols_board - self.n_to_win + 1):
                 segment = np.array([board[row, column], board[row - 1, column + 1], board[row - 2, column + 2],
                                     board[row - 3, column + 3]])
-                win_occurred = self.check_segment_for_winner(segment)
+                win_occurred = self.check_segment_for_winner(segment, player)
                 if win_occurred:
                     return True
 
@@ -127,17 +128,13 @@ class Agent:
             opponent = 1
 
         if chunk_list.count(player) == self.n_to_win:
-            score_this_chunk += 200
+            score_this_chunk = 100
         elif chunk_list.count(player) == self.n_to_win - 1 and chunk_list.count(0) == 1:
-            score_this_chunk += 5
+            score_this_chunk = 5
         elif chunk_list.count(player) == self.n_to_win - 2 and chunk_list.count(0) == 2:
-            score_this_chunk += 2
-        elif chunk_list.count(opponent) == self.n_to_win - 2 and chunk_list.count(0) == 2:
-            score_this_chunk -= 2
+            score_this_chunk = 2
         elif chunk_list.count(opponent) == self.n_to_win - 1 and chunk_list.count(0) == 1:
-            score_this_chunk -= 5
-        elif chunk_list.count(opponent) == self.n_to_win:
-            score_this_chunk -= 200
+            score_this_chunk = -4
 
         return score_this_chunk
 
@@ -150,6 +147,8 @@ class Agent:
         # both players' positions as well as open positions
 
         score = 0
+        center = board[:, self.n_cols_board//2].tolist()
+        score += center.count(player) * 3
 
         # evaluate in the horizontal direction
         for row in range(self.n_rows_board):
@@ -171,7 +170,7 @@ class Agent:
                 score += self.evaluate_chunk(chunk, player)
 
         # bottom up diagonals
-        for row in range(self.n_rows_board - 1, self.n_to_win + 2, -1):
+        for row in range(self.n_rows_board - 1, self.n_to_win - 2, -1):
             for column in range(self.n_cols_board - self.n_to_win + 1):
                 chunk = np.array([board[row, column], board[row - 1, column + 1], board[row - 2, column + 2],
                                   board[row - 3, column + 3]])
@@ -179,16 +178,35 @@ class Agent:
 
         return score
 
-    def stop_recursion(self, board_state, current_depth):
+    def is_terminal_state(self, board_state):
         rv = False
-        if not np.any(board_state == 0) or current_depth == 7 or self.is_winning_state(board_state):
+        if self.player == 1:
+            opponent = 2
+        else:
+            opponent = 1
+
+        if self.is_winning_state(board_state, self.player) or self.is_winning_state(board_state, opponent) \
+                or not np.any(board_state == 0):
             rv = True
         return rv
 
     def minimax(self, board_state, current_depth, player, alpha, beta, n_nodes):
-        if self.stop_recursion(board_state, current_depth) is True:
-            score = self.evaluate(board_state, self.player)
-            return score, -1, n_nodes + 1  # -1 is just a throwaway value
+        max_depth = 5
+        if self.is_terminal_state(board_state) is True or current_depth == max_depth:
+            if self.is_terminal_state(board_state):
+                if self.player == 1:
+                    opponent = 2
+                else:
+                    opponent = 1
+                if self.is_winning_state(board_state, self.player):
+                    return 1000000000, -1, n_nodes + 1
+                elif self.is_winning_state(board_state, opponent):
+                    return -1000000000, -1, n_nodes + 1
+                else:  # board is full
+                    return 0, -1, n_nodes + 1
+            else:  # max depth reached
+                score = self.evaluate(board_state, self.player)
+                return score, -1, n_nodes + 1  # -1 is just a throwaway value
 
         if current_depth % 2 == 1:
             is_min_node = True
@@ -216,15 +234,11 @@ class Agent:
                 score_list.append(score)
 
                 if is_min_node:
-                    beta_initial = np.inf
-                    beta_initial = min(beta_initial, score)
-                    beta = min(beta_initial, beta)
+                    beta = min(score, beta)
                     if beta <= alpha:
                         break
                 else:  # is max node
-                    alpha_initial = -np.inf
-                    alpha_initial = max(alpha_initial, score)
-                    alpha = max(alpha_initial, alpha)
+                    alpha = max(score, alpha)
                     if alpha >= beta:
                         break
 
@@ -242,7 +256,8 @@ class Agent:
             repeats = [score_list[i] for i in range(len(score_list)) if score_list[i] == score]
             if len(repeats) > 1:
                 repeat_indices = [i for i in range(len(score_list)) if score_list[i] == score]
-                score_idx = np.random.choice(repeat_indices)
+                # score_idx = np.random.choice(repeat_indices)
+                score_idx = np.min(repeat_indices)
                 best_column = column_list[score_idx]
             else:
                 score_idx = score_list.index(score)
