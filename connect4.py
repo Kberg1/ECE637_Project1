@@ -241,6 +241,9 @@ class Connect4:
         Plays Connect4 via the terminal
         :return: None
         """
+        logging = True
+        if logging:
+            file_obj = open('ABP_log10.txt', 'w')
         pygame.init()
         player = 1
         if self.ai_agent == 3:  # two AI players
@@ -334,6 +337,11 @@ class Connect4:
                 print(n_nodes, "nodes visited")
                 print()
 
+                if logging:
+                    file_obj.write("Player " + str(player) + "'s move = column " + str(column) + "\tscore = " +
+                                   str(score) + '\n')
+                    file_obj.write("Nodes visited = " + str(n_nodes) + '\n')
+
                 if self.is_winning_move(row, column, player):
 
                     # if there is a human player, mock them
@@ -356,6 +364,9 @@ class Connect4:
 
         # when the game is over, delay before closing the screen, then exit
         print("Max nodes visited in a turn: ", n_max_nodes)
+        if logging:
+            file_obj.write("Max nodes visited in a turn: " + str(n_max_nodes) + '\n')
+            file_obj.close()
         pygame.time.wait(5000)
         sys.exit()
 
