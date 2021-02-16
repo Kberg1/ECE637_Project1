@@ -365,6 +365,10 @@ class Agent:
         if self.tree is not None:
             del self.tree
 
+        logging = True
+        if logging:
+            file_obj = open('BLA_depth5_log10.txt', 'a')
+
         # set the max depth of the tree
         depth_limit = 5
 
@@ -375,6 +379,11 @@ class Agent:
         value, child = self.minimax("root")
         root_children = self.tree.children("root")
         move = root_children[child].data.move
+        if logging:
+            file_obj.write("Player " + str(self.player) + "'s move = column " + str(move[1]) + "\tscore = " +
+                           str(value) + '\n')
+            file_obj.write("Nodes visited = " + str(len(self.tree.nodes)) + '\n')
+            file_obj.close()
         print("Player ", self.player, "'s move = column ", move[1], "    value = ", value, sep='')
         print()
         return move
